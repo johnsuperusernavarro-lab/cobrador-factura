@@ -145,17 +145,7 @@ document.getElementById("btn-guardar").addEventListener("click", async () => {
   }
 });
 
-// Estado inicial: primera seccion abierta, el resto cerradas
-// (el click lo maneja main.js para evitar handlers duplicados)
-document.querySelectorAll(".section-header").forEach((header, i) => {
-  if (i > 0) {
-    const body  = header.nextElementSibling;
-    const arrow = header.querySelector(".arrow");
-    body.classList.add("hidden");
-    if (arrow) arrow.textContent = "▸";
-  }
-});
-
+initSections(true);  // primera abierta, resto cerradas
 cargarConfig();
 </script>
 </body>

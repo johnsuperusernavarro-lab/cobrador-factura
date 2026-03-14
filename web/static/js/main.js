@@ -46,17 +46,34 @@ function markActiveNav() {
 
 document.addEventListener("DOMContentLoaded", () => {
   markActiveNav();
+});
 
-  // Secciones colapsables
-  document.querySelectorAll(".section-header").forEach(header => {
-    header.addEventListener("click", () => {
-      const body  = header.nextElementSibling;
-      const arrow = header.querySelector(".arrow");
+// ── Secciones colapsables ──────────────────────────────────────────────────
+// Llamar desde cada pagina que use secciones: initSections(primerAbierto)
+
+function initSections(primerAbierto = true) {
+  document.querySelectorAll(".section-header").forEach((header, i) => {
+    const body  = header.parentElement.querySelector(".section-body");
+    const arrow = header.querySelector(".arrow");
+    if (!body) return;
+
+    // Estado inicial
+    const cerrar = primerAbierto ? i > 0 : true;
+    if (cerrar) {
+      body.classList.add("hidden");
+      if (arrow) arrow.textContent = "▸";
+    } else {
+      body.classList.remove("hidden");
+      if (arrow) arrow.textContent = "▾";
+    }
+
+    // Un solo handler por header usando onclick (no acumula duplicados)
+    header.onclick = () => {
       body.classList.toggle("hidden");
       if (arrow) arrow.textContent = body.classList.contains("hidden") ? "▸" : "▾";
-    });
+    };
   });
-});
+}
 
 // ── Formateo ──────────────────────────────────────────────────────────────
 

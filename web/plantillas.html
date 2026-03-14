@@ -73,16 +73,7 @@ async function cargarPlantillas() {
   `).join("");
 
   document.getElementById("plantillas-lista").innerHTML = html;
-
-  // Re-aplicar logica de secciones colapsables
-  document.querySelectorAll(".section-header").forEach(header => {
-    header.addEventListener("click", () => {
-      const body = header.nextElementSibling;
-      const arrow = header.querySelector(".arrow");
-      body.classList.toggle("hidden");
-      if (arrow) arrow.textContent = body.classList.contains("hidden") ? "▸" : "▾";
-    });
-  });
+  initSections(false);  // todas abiertas por defecto
 }
 
 async function guardar(tipo, canal) {

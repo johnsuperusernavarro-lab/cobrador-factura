@@ -100,6 +100,7 @@ async function procesarPDF(file) {
     document.getElementById("res-total").textContent    = fmt$(_datos.total ?? 0);
     document.getElementById("res-mensaje").value        = _datos.mensaje  || "";
     document.getElementById("resultado").style.display  = "";
+    initSections(false);  // todas las secciones abiertas al mostrar resultado
     toast("PDF procesado", "success");
   } catch (err) {
     toast("Error: " + err.message, "error");
