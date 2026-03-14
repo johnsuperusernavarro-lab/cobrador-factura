@@ -23,7 +23,13 @@ if sys.platform == "win32":
     except AttributeError:
         pass
 
-os.chdir(Path(__file__).parent)
+# Cuando corre como .exe de PyInstaller, los recursos estan en sys._MEIPASS
+if getattr(sys, "frozen", False):
+    _BASE = Path(sys._MEIPASS)
+else:
+    _BASE = Path(__file__).parent
+
+os.chdir(_BASE)
 
 import uvicorn
 from fastapi import FastAPI
