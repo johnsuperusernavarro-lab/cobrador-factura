@@ -1,0 +1,10 @@
+services:
+  - type: web
+    name: cobrador-factura
+    env: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: python main_web.py
+    envVars:
+      - key: RENDER
+        value: "true"

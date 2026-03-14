@@ -64,20 +64,32 @@ def page(page: str):
 
 
 # ── Arranque ─────────────────────────────────────────────────────────────────
-def _abrir_navegador():
+def _abrir_navegador(port: int):
     time.sleep(1.2)
-    webbrowser.open("http://localhost:8000")
+    webbrowser.open(f"http://localhost:{port}")
 
 
 def main():
     init_db()
+
+    # Render (y otros servidores) inyectan la variable PORT y RENDER
+    en_servidor = bool(os.environ.get("RENDER") or os.environ.get("PORT"))
+    port = int(os.environ.get("PORT", 8000))
+    host = "0.0.0.0" if en_servidor else "127.0.0.1"
+
     print("=" * 50)
     print("  Cobrador de Facturas — version web")
-    print("  http://localhost:8000")
-    print("  Presiona Ctrl+C para cerrar")
+    if en_servidor:
+        print(f"  Corriendo en servidor — puerto {port}")
+    else:
+        print(f"  http://localhost:{port}")
+        print("  Presiona Ctrl+C para cerrar")
     print("=" * 50)
-    threading.Thread(target=_abrir_navegador, daemon=True).start()
-    uvicorn.run(app, host="127.0.0.1", port=8000, log_level="warning")
+
+    if not en_servidor:
+        threading.Thread(target=_abrir_navegador, args=(port,), daemon=True).start()
+
+    uvicorn.run(app, host=host, port=port, log_level="warning")
 
 
 if __name__ == "__main__":
