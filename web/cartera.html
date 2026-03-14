@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Cartera — Cobrador</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+
+<aside class="sidebar">
+  <div class="sidebar-logo">
+    <h1>Cobrador de<br>Facturas</h1>
+    <span>v2.0 web</span>
+  </div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/">           <span class="nav-icon">🏠</span> Dashboard</a>
+    <a class="nav-item" href="/cartera">    <span class="nav-icon">📊</span> Cartera</a>
+    <a class="nav-item" href="/pdfs">       <span class="nav-icon">📄</span> PDFs / RIDEs</a>
+    <a class="nav-item" href="/plantillas"> <span class="nav-icon">📝</span> Plantillas</a>
+    <a class="nav-item" href="/contifico">  <span class="nav-icon">🔄</span> Contifico</a>
+    <a class="nav-item" href="/ajustes">    <span class="nav-icon">⚙️</span> Ajustes</a>
+  </nav>
+  <div class="sidebar-footer">
+    <span style="font-size:11px; color:var(--muted);"><span class="status-dot"></span> Servidor activo</span>
+  </div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">Cartera</span>
+    <div class="topbar-right">
+      <label class="btn btn-primary" for="xls-input">📂 Cargar XLS</label>
+      <input type="file" id="xls-input" accept=".xls,.xlsx" style="display:none">
+      <button class="btn btn-gold" id="btn-procesar" style="display:none">⚡ Procesar todo</button>
+    </div>
+  </div>
+
+  <div class="content">
+
+    <!-- Metricas -->
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-label">Vencido</div>
+        <div class="card-value love" id="m-vencido">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Por vencer</div>
+        <div class="card-value gold" id="m-por-vencer">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Vigente</div>
+        <div class="card-value foam" id="m-vigente">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Total</div>
+        <div class="card-value pine" id="m-total">—</div>
+      </div>
+    </div>
+
+    <!-- Filtros -->
+    <div style="display:flex; gap:8px; margin-bottom:16px; flex-wrap:wrap;">
+      <button class="btn btn-primary"   data-filtro="todos"       id="f-todos">Todas</button>
+      <button class="btn btn-secondary" data-filtro="vencida"     id="f-vencida">Vencidas</button>
+      <button class="btn btn-secondary" data-filtro="por_vencer"  id="f-por_vencer">Por vencer</button>
+      <button class="btn btn-secondary" data-filtro="sin_contacto" id="f-sin_contacto">Sin contacto</button>
+    </div>
+
+    <!-- Tabla -->
+    <div class="table-wrap">
+      <table>
+        <thead>
+          <tr>
+            <th>Factura</th>
+            <th>Cliente</th>
+            <th>Fecha</th>
+            <th>Vence</th>
+            <th>Monto</th>
+            <th>Estado</th>
+            <th>Acciones</th>
+          </tr>
+        </thead>
+        <tbody id="cartera-tbody">
+          <tr>
+            <td colspan="7">
+              <div class="empty">
+                <div class="empty-icon">📂</div>
+                <h3>Sin cartera cargada</h3>
+                <p>Haz clic en "Cargar XLS" para importar el reporte de Contifico.</p>
+              </div>
+            </td>
+          </tr>
+        </tbody>
+      </table>
+    </div>
+
+    <!-- Panel de mensaje (aparece al seleccionar una factura) -->
+    <div id="panel-mensaje" style="display:none; margin-top:20px;">
+      <div class="section">
+        <div class="section-header">
+          <span id="panel-cliente">Cliente</span>
+          <span class="arrow">▾</span>
+        </div>
+        <div class="section-body">
+          <div style="margin-bottom:10px; font-size:12px; color:var(--muted);" id="panel-info"></div>
+          <textarea id="panel-texto" rows="6" style="margin-bottom:10px;"></textarea>
+          <div style="display:flex; gap:8px;">
+            <button class="btn btn-secondary" onclick="copiarMensaje()">📋 Copiar</button>
+            <button class="btn btn-whatsapp"  onclick="abrirWhatsapp()">💬 WhatsApp</button>
+            <button class="btn btn-primary"   onclick="enviarEmail()">📧 Email</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="/static/js/main.js"></script>
+<script src="/static/js/cartera.js"></script>
+</body>
+</html>

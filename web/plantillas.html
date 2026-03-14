@@ -1,0 +1,110 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Plantillas — Cobrador</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><h1>Cobrador de<br>Facturas</h1><span>v2.0 web</span></div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/">           <span class="nav-icon">🏠</span> Dashboard</a>
+    <a class="nav-item" href="/cartera">    <span class="nav-icon">📊</span> Cartera</a>
+    <a class="nav-item" href="/pdfs">       <span class="nav-icon">📄</span> PDFs / RIDEs</a>
+    <a class="nav-item" href="/plantillas"> <span class="nav-icon">📝</span> Plantillas</a>
+    <a class="nav-item" href="/contifico">  <span class="nav-icon">🔄</span> Contifico</a>
+    <a class="nav-item" href="/ajustes">    <span class="nav-icon">⚙️</span> Ajustes</a>
+  </nav>
+  <div class="sidebar-footer"><span style="font-size:11px; color:var(--muted);"><span class="status-dot"></span> Servidor activo</span></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">Plantillas de mensajes</span>
+  </div>
+  <div class="content">
+    <div id="plantillas-lista"></div>
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="/static/js/main.js"></script>
+<script>
+const TIPOS  = ["vencida", "por_vencer", "pdf"];
+const CANALES = ["email", "whatsapp"];
+
+async function cargarPlantillas() {
+  let plantillas = [];
+  try { plantillas = await get("/plantillas"); } catch {}
+
+  const mapa = {};
+  plantillas.forEach(p => { mapa[`${p.tipo}__${p.canal}`] = p; });
+
+  const html = TIPOS.map(tipo => `
+    <div class="section">
+      <div class="section-header">
+        <span>${iconTipo(tipo)} ${labelTipo(tipo)}</span>
+        <span class="arrow">▾</span>
+      </div>
+      <div class="section-body">
+        ${CANALES.map(canal => {
+          const p = mapa[`${tipo}__${canal}`] || {};
+          return `
+          <div style="margin-bottom:20px;">
+            <h4 style="font-size:12px; color:var(--subtle); text-transform:uppercase; letter-spacing:.05em; margin-bottom:10px;">
+              ${canal === "email" ? "✉ Email" : "💬 WhatsApp"}
+            </h4>
+            ${canal === "email" ? `
+            <div class="form-group">
+              <label>Asunto</label>
+              <input type="text" id="asunto-${tipo}-${canal}" value="${p.asunto || ""}">
+            </div>` : ""}
+            <div class="form-group">
+              <label>Cuerpo</label>
+              <textarea id="cuerpo-${tipo}-${canal}" rows="5">${p.cuerpo || ""}</textarea>
+            </div>
+            <button class="btn btn-primary" onclick="guardar('${tipo}','${canal}')">Guardar</button>
+          </div>`;
+        }).join("<hr style='margin:16px 0; border:none; border-top:1px solid var(--overlay);'>")}
+      </div>
+    </div>
+  `).join("");
+
+  document.getElementById("plantillas-lista").innerHTML = html;
+
+  // Re-aplicar logica de secciones colapsables
+  document.querySelectorAll(".section-header").forEach(header => {
+    header.addEventListener("click", () => {
+      const body = header.nextElementSibling;
+      const arrow = header.querySelector(".arrow");
+      body.classList.toggle("hidden");
+      if (arrow) arrow.textContent = body.classList.contains("hidden") ? "▸" : "▾";
+    });
+  });
+}
+
+async function guardar(tipo, canal) {
+  const asuntoEl = document.getElementById(`asunto-${tipo}-${canal}`);
+  const body = {
+    tipo,
+    canal,
+    asunto: asuntoEl ? asuntoEl.value : "",
+    cuerpo: document.getElementById(`cuerpo-${tipo}-${canal}`).value,
+  };
+  try {
+    await post("/api/plantillas", body);
+    toast("Plantilla guardada", "success");
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+}
+
+function iconTipo(t)  { return {vencida:"🔴", por_vencer:"🟡", pdf:"📄"}[t] || ""; }
+function labelTipo(t) { return {vencida:"Facturas vencidas", por_vencer:"Por vencer", pdf:"PDF / RIDE"}[t] || t; }
+
+cargarPlantillas();
+</script>
+</body>
+</html>

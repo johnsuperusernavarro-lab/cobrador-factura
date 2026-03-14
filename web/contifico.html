@@ -1,0 +1,108 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Contifico — Cobrador</title>
+  <link rel="stylesheet" href="/static/css/main.css">
+</head>
+<body>
+<aside class="sidebar">
+  <div class="sidebar-logo"><h1>Cobrador de<br>Facturas</h1><span>v2.0 web</span></div>
+  <nav class="sidebar-nav">
+    <a class="nav-item" href="/">           <span class="nav-icon">🏠</span> Dashboard</a>
+    <a class="nav-item" href="/cartera">    <span class="nav-icon">📊</span> Cartera</a>
+    <a class="nav-item" href="/pdfs">       <span class="nav-icon">📄</span> PDFs / RIDEs</a>
+    <a class="nav-item" href="/plantillas"> <span class="nav-icon">📝</span> Plantillas</a>
+    <a class="nav-item" href="/contifico">  <span class="nav-icon">🔄</span> Contifico</a>
+    <a class="nav-item" href="/ajustes">    <span class="nav-icon">⚙️</span> Ajustes</a>
+  </nav>
+  <div class="sidebar-footer"><span style="font-size:11px; color:var(--muted);"><span class="status-dot"></span> Servidor activo</span></div>
+</aside>
+
+<div class="main">
+  <div class="topbar">
+    <span class="topbar-title">Sincronizar Contifico</span>
+    <div class="topbar-right">
+      <button class="btn btn-primary" id="btn-sync">🔄 Sincronizar ahora</button>
+    </div>
+  </div>
+  <div class="content">
+
+    <div class="cards-grid">
+      <div class="card">
+        <div class="card-label">Contactos en BD</div>
+        <div class="card-value pine" id="m-contactos">—</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Ultimo sync</div>
+        <div id="m-ultimo" style="font-size:13px; color:var(--subtle); margin-top:6px;">—</div>
+      </div>
+    </div>
+
+    <div id="sync-log" style="display:none; margin-top:20px;">
+      <div class="section">
+        <div class="section-header"><span>Resultado de sincronizacion</span></div>
+        <div class="section-body">
+          <pre id="sync-texto" style="font-size:12px; color:var(--subtle); white-space:pre-wrap;"></pre>
+        </div>
+      </div>
+    </div>
+
+    <div style="margin-top:20px;">
+      <h2 style="font-size:14px; color:var(--subtle); margin-bottom:14px; font-weight:600; text-transform:uppercase; letter-spacing:.05em;">Contactos guardados</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Nombre</th><th>Email</th><th>Telefono</th></tr>
+          </thead>
+          <tbody id="contactos-tbody">
+            <tr><td colspan="3"><div class="empty"><div class="empty-icon">👥</div><h3>Sin contactos</h3></div></td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+  </div>
+</div>
+
+<div id="toast"></div>
+<script src="/static/js/main.js"></script>
+<script>
+async function cargarContactos() {
+  try {
+    const contactos = await get("/api/contifico/contactos");
+    document.getElementById("m-contactos").textContent = contactos.length;
+    if (contactos.length) {
+      document.getElementById("contactos-tbody").innerHTML = contactos.map(c => `
+        <tr>
+          <td>${c.nombre_contifico}</td>
+          <td>${c.email || "—"}</td>
+          <td>${c.telefono || "—"}</td>
+        </tr>
+      `).join("");
+    }
+  } catch {}
+}
+
+document.getElementById("btn-sync").addEventListener("click", async () => {
+  toast("Sincronizando con Contifico...", "info");
+  document.getElementById("btn-sync").disabled = true;
+  try {
+    const res = await post("/api/contifico/sincronizar", {});
+    document.getElementById("sync-log").style.display = "";
+    document.getElementById("sync-texto").textContent =
+      `Nuevos: ${res.nuevos}\nActualizados: ${res.actualizados}\nTotal: ${res.total}`;
+    document.getElementById("m-ultimo").textContent = new Date().toLocaleString("es-EC");
+    toast(`Sync completo: ${res.nuevos} nuevos`, "success");
+    cargarContactos();
+  } catch (err) {
+    toast("Error: " + err.message, "error");
+  }
+  document.getElementById("btn-sync").disabled = false;
+});
+
+cargarContactos();
+</script>
+</body>
+</html>
