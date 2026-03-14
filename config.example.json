@@ -1,0 +1,25 @@
+{
+  "email": {
+    "provider": "gmail",
+    "address": "tu_correo@gmail.com",
+    "password": "contraseña_de_aplicacion"
+  },
+  "whatsapp": {
+    "mi_telefono": "0999999999"
+  },
+  "contifico": {
+    "api_token": ""
+  },
+  "remitente": {
+    "nombre": "Tu Nombre Completo",
+    "empresa": "Tu Empresa",
+    "cargo": "Tu Cargo"
+  },
+  "banco": {
+    "nombre": "Nombre del Banco",
+    "titular": "Titular de la Cuenta",
+    "numero": "0000000",
+    "tipo": "Cta. Corriente",
+    "ci": "0000000000"
+  }
+}

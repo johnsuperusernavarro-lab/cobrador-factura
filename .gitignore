@@ -1,0 +1,37 @@
+# Datos sensibles — nunca subir a GitHub
+data/config.json
+data/cobros.db
+data/cobros.db-shm
+data/cobros.db-wal
+
+# Carpetas de trabajo
+por_vencer/
+vencidas/
+enviadas/
+mensajes_whatsapp/
+report/
+
+# Build
+build/
+dist/
+*.spec.bak
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+*.egg-info/
+
+# Entornos virtuales
+venv/
+env/
+.venv/
+.env
+
+# IDEs
+.vscode/
+.idea/
+*.swp
+
+# Claude Code
+.claude/
