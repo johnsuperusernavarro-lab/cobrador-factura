@@ -1,115 +1,102 @@
 # Cobrador de Facturas
 
-Herramienta de escritorio para gestionar cuentas por cobrar. Importa la cartera desde
-**Contifico**, sincroniza los contactos de tus clientes via la API, y envía recordatorios
-de pago por **email** y **WhatsApp** con un clic.
+Herramienta para gestionar cuentas por cobrar. Importa la cartera desde **Contifico**,
+sincroniza los contactos de tus clientes via API, y envía recordatorios de pago por
+**email** y **WhatsApp** con un clic.
+
+Disponible como **app web** (abre en el navegador, sin instalar nada) y como
+**app de escritorio** para Windows.
+
+---
+
+## Demo en línea
+
+**https://cobrador-factura.onrender.com**
+
+> En el plan gratuito de Render la app puede tardar ~30 segundos en despertar
+> si no ha sido usada recientemente.
 
 ---
 
 ## Características
 
-- **Importar cartera XLS** — carga el reporte `CarteraPorCobrar.xls` de Contifico y muestra las facturas por vencer y vencidas con sus montos
-- **Sincronización Contifico API** — importa automáticamente el email y teléfono de todos tus clientes desde la API de Contifico
-- **Envío de emails** — envía recordatorios de cobro personalizados por SMTP (Gmail, Hotmail, Yahoo)
-- **WhatsApp** — genera el enlace `wa.me` con el mensaje listo para enviar desde WhatsApp Web
-- **PDF Rápido** — arrastra un RIDE ecuatoriano (PDF) y extrae los datos del cliente al instante
-- **Plantillas editables** — 4 plantillas personalizables: por vencer / vencida × email / WhatsApp
-- **Escáner RIDES** — escanea tu carpeta de RIDEs y cruza los clientes con fuzzy matching para completar contactos faltantes
+- **Cartera XLS** — importa el reporte `CarteraPorCobrar.xls` de Contifico y muestra facturas vencidas y por vencer con sus montos
+- **Sincronización Contifico API** — trae el email y teléfono de todos tus clientes automáticamente
+- **Envío de emails** — recordatorios personalizados por SMTP (Gmail, Hotmail, Yahoo)
+- **WhatsApp** — genera el enlace `wa.me` con el mensaje listo para enviar
+- **PDF / RIDEs** — arrastra un RIDE ecuatoriano y extrae los datos del cliente al instante
+- **Plantillas editables** — mensajes personalizables por tipo (vencida / por vencer / PDF) y canal (email / WhatsApp)
 - **Historial de envíos** — evita reenvíos duplicados el mismo día
 
 ---
 
-## Instalación
+## Versión web (recomendada)
 
-### Requisitos
+### Uso en línea
 
-- Python 3.10 o superior
-- Windows (la ruta de RIDES usa `Documents/RIDES` por defecto)
+Abre **https://cobrador-factura.onrender.com** en cualquier navegador. No requiere instalar nada.
 
-### Pasos
+### Uso local (sin internet)
 
 ```bash
 # 1. Clona el repositorio
-git clone <url-del-repo>
-cd cobrador
+git clone https://github.com/johnsuperusernavarro-lab/cobrador-factura.git
+cd cobrador-factura
 
 # 2. Instala las dependencias
 pip install -r requirements.txt
 
-# 3. Ejecuta la aplicación
-python main.py
+# 3. Ejecuta la app web
+python main_web.py
 ```
 
-En el primer arranque la aplicación abre sin configuración. Ve a **⚙ Ajustes** para ingresar tus datos (ver sección **Configuración**).
+Se abre el navegador automaticamente en `http://localhost:8000`.
+
+O simplemente haz doble clic en **`COBRADOR_WEB.bat`**.
+
+### Compilar como .exe (sin necesitar Python)
+
+Doble clic en **`BUILD_WEB.bat`** — genera `dist\CobradordFacturas\CobradordFacturas.exe`.
+
+Para entregar a un tester, ejecuta **`PREPARAR_TESTER_WEB.bat`** antes de comprimir la carpeta.
 
 ---
 
 ## Configuración
 
-Toda la configuración se gestiona desde el diálogo **⚙ Ajustes** dentro de la aplicación. No es necesario editar archivos manualmente.
-
-Los datos se guardan en `data/config.json`, que está excluido del repositorio por `.gitignore` y nunca se sube a GitHub.
-
-### Secciones del diálogo Ajustes
-
-El diálogo usa paneles colapsables — haz clic en cada sección para expandirla:
+En la app ve a **Ajustes** e ingresa:
 
 | Sección | Campos |
-|---------|--------|
-| **Correo Electrónico** | Proveedor (Gmail / Hotmail / Yahoo), dirección, contraseña de aplicación |
-| **WhatsApp** | Tu número de teléfono (aparece en la firma) |
-| **Remitente** | Nombre, empresa y cargo (usados en la firma de los mensajes) |
-| **Datos Bancarios** | Banco, titular, número de cuenta, tipo y C.I./RUC (incluidos en los mensajes de cobro) |
+|---|---|
+| **Correo electronico** | Proveedor, direccion, contrasena de aplicacion |
+| **WhatsApp** | Tu numero de telefono |
+| **Remitente** | Nombre, empresa y cargo (usados en la firma) |
+| **Datos bancarios** | Banco, titular, numero de cuenta, tipo y CI/RUC |
+| **Contifico API** | Token de API |
 
-> Los datos bancarios y de remitente se insertan automáticamente en cada mensaje al momento de generarlo — no quedan guardados en las plantillas ni en la base de datos.
+Los datos se guardan en `data/config.json`, excluido del repositorio por `.gitignore`.
 
-### Contraseña de aplicación para Gmail
+### Contrasena de aplicacion para Gmail
 
-Gmail requiere una **contraseña de aplicación** (no tu contraseña normal):
-1. Activa la verificación en 2 pasos en tu cuenta de Google
-2. Ve a `myaccount.google.com` → Seguridad → Contraseñas de aplicación
-3. Genera una para "Correo" y pégala en el campo correspondiente
+Gmail requiere una **contrasena de aplicacion** (no tu contrasena normal):
+1. Activa verificacion en 2 pasos en tu cuenta de Google
+2. Ve a `myaccount.google.com` → Seguridad → Contrasenas de aplicacion
+3. Genera una para "Correo" y pegala en Ajustes
 
-### Token de la API de Contifico
+### Token de Contifico
 
-Encuéntralo en Contifico → **Configuración → Integraciones → API**. Se ingresa en el diálogo **🔗 Contifico** dentro de la aplicación.
+Encuéntralo en Contifico → **Configuracion → Integraciones → API**.
 
 ---
 
-## Uso
+## Variables disponibles en plantillas
 
-### Flujo principal — Cartera XLS
+En el editor de plantillas puedes usar:
 
-1. Abre la aplicación con `python main.py` o haciendo doble clic en `COBRADOR_GUI.bat`
-2. Haz clic en **🔗 Contifico** para sincronizar los contactos de tus clientes desde la API
-3. Haz clic en **📂 Cargar XLS** y selecciona tu reporte `CarteraPorCobrar.xls`
-4. La lista mostrará las facturas con íconos de conectividad:
-   - `●` — tiene email y teléfono
-   - `◑` — tiene solo uno
-   - `○` — sin contacto
-5. Usa los filtros pill para navegar: **Todos · Vencidas (n) · Por Vencer (n) · Sin Contacto (n)**
-6. Selecciona una factura — el panel derecho muestra el cliente, monto y mensaje generado
-7. Usa **📧 Email**, **💬 WhatsApp** o **📋 Copiar** para enviar
-8. Para enviar todos los emails pendientes en lote: **⚡ Procesar Todo**
+`{cliente}` `{factura_no}` `{fecha}` `{total}` `{descripcion}`
 
-### Flujo rápido — PDF
-
-1. Ve a la pestaña **PDF Rápido**
-2. Arrastra un RIDE (PDF de factura electrónica ecuatoriana) al área de drop
-3. El sistema extrae automáticamente los datos del cliente
-4. Edita el mensaje si es necesario y envía
-
-### Editar plantillas de mensajes
-
-Haz clic en **📝 Plantillas** para personalizar los 4 mensajes:
-- Por vencer / Email
-- Por vencer / WhatsApp
-- Vencida / Email
-- Vencida / WhatsApp
-
-Variables de factura disponibles en plantillas: `{cliente}`, `{factura_no}`, `{fecha}`, `{total}`, `{descripcion}`, `{empresa}`
-
-Los datos de firma y banco (`[TU NOMBRE]`, `[TU BANCO]`, `[NÚMERO DE CUENTA]`, etc.) se resuelven automáticamente desde **⚙ Ajustes** — no es necesario escribirlos en cada plantilla.
+Los datos de firma (`[TU NOMBRE]`, `[TU BANCO]`, `[NUMERO DE CUENTA]`, etc.)
+se resuelven automaticamente desde Ajustes al generar cada mensaje.
 
 ---
 
@@ -117,69 +104,50 @@ Los datos de firma y banco (`[TU NOMBRE]`, `[TU BANCO]`, `[NÚMERO DE CUENTA]`, 
 
 ```
 cobrador/
-├── main.py                    # Punto de entrada GUI
-├── enviar_facturas.py         # Script CLI (uso por lotes, legacy)
+├── main_web.py                # Servidor FastAPI (version web)
+├── main.py                    # App de escritorio PyQt5 (legacy)
 ├── requirements.txt           # Dependencias Python
-├── config.example.json        # Plantilla de configuración (referencia)
-├── CobradordFacturas.spec     # Configuración de PyInstaller
-├── COBRADOR_GUI.bat           # Lanzador de la aplicación (doble clic)
-├── BUILD.bat                  # Compilar a .exe con PyInstaller
-├── PREPARAR_PARA_TESTER.bat   # Limpiar datos antes de entregar a un tester
+├── config.example.json        # Plantilla de configuracion (referencia)
+├── render.yaml                # Configuracion de deploy en Render
+├── CobradordFacturas_Web.spec # PyInstaller — version web
+├── CobradordFacturas.spec     # PyInstaller — version desktop
+├── COBRADOR_WEB.bat           # Lanzar version web localmente
+├── BUILD_WEB.bat              # Compilar version web a .exe
+├── PREPARAR_TESTER_WEB.bat    # Limpiar datos antes de entregar
 ├── app/
-│   ├── config_manager.py      # Gestión de data/config.json
-│   ├── database.py            # SQLite: contactos, plantillas, historial
-│   ├── utils.py               # Resolución de rutas (bundled vs. source)
+│   ├── api/                   # Endpoints FastAPI (REST)
+│   │   ├── cobros.py          # Cartera XLS, mensajes, envio email
+│   │   ├── config_api.py      # Leer y guardar configuracion
+│   │   ├── plantillas_api.py  # CRUD de plantillas
+│   │   ├── contifico_api.py   # Sincronizacion de contactos
+│   │   └── pdfs_api.py        # Extraccion de RIDEs, envio email
 │   ├── services/
-│   │   ├── contifico_service.py   # API REST de Contifico (/persona/)
+│   │   ├── contifico_service.py   # API REST de Contifico
 │   │   ├── cobros_service.py      # Parser del XLS CarteraPorCobrar
-│   │   ├── email_service.py       # Envío SMTP
-│   │   ├── message_service.py     # Generación de mensajes (resuelve placeholders)
-│   │   ├── pdf_extractor.py       # Extracción de datos de RIDEs
-│   │   └── rides_scanner.py       # Escáner de carpeta RIDES con fuzzy matching
-│   └── ui/
-│       ├── main_window.py         # QMainWindow con dos pestañas
-│       ├── cobros_widget.py       # Pestaña 1: Cartera XLS + acciones
-│       ├── pdf_drop_widget.py     # Pestaña 2: Drag & drop de PDFs
-│       ├── settings_dialog.py     # Ajustes (accordion): correo, WhatsApp, remitente, banco
-│       ├── contifico_dialog.py    # Diálogo: sincronizar contactos desde API Contifico
-│       ├── plantillas_dialog.py   # Editor de plantillas de mensajes
-│       └── confirm_dialog.py      # Confirmación antes de envío masivo
-├── styles/
-│   └── styles.qss             # Tema visual (Rosé Pine Dawn)
+│   │   ├── email_service.py       # Envio SMTP
+│   │   ├── message_service.py     # Generacion de mensajes
+│   │   └── pdf_extractor.py       # Extraccion de datos de RIDEs
+│   ├── config_manager.py      # Gestion de data/config.json
+│   ├── database.py            # SQLite: contactos, plantillas, historial
+│   └── utils.py               # Resolucion de rutas
+├── web/                       # Frontend (HTML + CSS + JS)
+│   ├── index.html             # Dashboard
+│   ├── cartera.html           # Cartera XLS
+│   ├── pdfs.html              # PDFs / RIDEs
+│   ├── plantillas.html        # Editor de plantillas
+│   ├── contifico.html         # Sincronizacion Contifico
+│   ├── ajustes.html           # Configuracion
+│   └── static/
+│       ├── css/main.css       # Tema Rose Pine Dawn
+│       └── js/
+│           ├── main.js        # Utilidades globales (API, toast, nav)
+│           └── cartera.js     # Logica de la pagina Cartera
 ├── resources/
-│   └── icon.ico               # Ícono de la aplicación
+│   └── icon.ico
 └── data/                      # Excluido del repo (.gitignore)
-    ├── config.json            # Tu configuración privada
-    └── cobros.db              # Base de datos local (contactos, plantillas, historial)
+    ├── config.json            # Tu configuracion privada
+    └── cobros.db              # Base de datos SQLite
 ```
-
----
-
-## Empaquetado como ejecutable
-
-Para generar un `.exe` standalone:
-
-```bash
-# Opción 1 — doble clic
-BUILD.bat
-
-# Opción 2 — desde terminal
-"C:\Users\USERS\AppData\Local\Programs\Python\Python314\python.exe" -m PyInstaller CobradordFacturas.spec --clean
-```
-
-El ejecutable queda en `dist\CobradordFacturas\CobradordFacturas.exe`.
-
-### Antes de entregar el ejecutable a un tester
-
-Ejecutar `PREPARAR_PARA_TESTER.bat` — elimina `config.json` y `cobros.db` de la carpeta `dist/` para que el tester arranque con la aplicación limpia.
-
----
-
-## Notas sobre el script CLI
-
-`enviar_facturas.py` es la versión original por línea de comandos. Procesa PDFs
-de las carpetas `por_vencer/` y `vencidas/` y envía los emails automáticamente.
-Requiere que `data/config.json` tenga completas las secciones `email`, `remitente` y `banco`.
 
 ---
 
