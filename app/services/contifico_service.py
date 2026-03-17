@@ -31,7 +31,7 @@ class ContificoService:
             url += "?" + urllib.parse.urlencode(params)
 
         req = urllib.request.Request(url)
-        req.add_header("Authorization", f"Token {self.api_token}")
+        req.add_header("Authorization", self.api_token)
         req.add_header("Content-Type", "application/json")
         req.add_header("Accept", "application/json")
 
