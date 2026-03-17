@@ -211,6 +211,18 @@ class SettingsDialog(QDialog):
         self._lbl_result.setMinimumHeight(20)
         lay.addWidget(self._lbl_result)
 
+        # Botón guardar individual
+        row_save = QHBoxLayout()
+        row_save.addStretch()
+        self._lbl_email_saved = QLabel("")
+        self._lbl_email_saved.setStyleSheet("color: #40a169; font-size: 11px;")
+        row_save.addWidget(self._lbl_email_saved)
+        btn_save = QPushButton("Guardar")
+        btn_save.setProperty("class", "primary")
+        btn_save.clicked.connect(self._guardar_email)
+        row_save.addWidget(btn_save)
+        lay.addLayout(row_save)
+
         return grp
 
     # ── Grupo Remitente ───────────────────────────────────────────────────
@@ -236,6 +248,17 @@ class SettingsDialog(QDialog):
             row.addWidget(lbl)
             row.addWidget(edit, 1)
             lay.addLayout(row)
+
+        row_save = QHBoxLayout()
+        row_save.addStretch()
+        self._lbl_rem_saved = QLabel("")
+        self._lbl_rem_saved.setStyleSheet("color: #40a169; font-size: 11px;")
+        row_save.addWidget(self._lbl_rem_saved)
+        btn_save = QPushButton("Guardar")
+        btn_save.setProperty("class", "primary")
+        btn_save.clicked.connect(self._guardar_remitente)
+        row_save.addWidget(btn_save)
+        lay.addLayout(row_save)
 
         return grp
 
@@ -265,6 +288,17 @@ class SettingsDialog(QDialog):
             row.addWidget(edit, 1)
             lay.addLayout(row)
 
+        row_save = QHBoxLayout()
+        row_save.addStretch()
+        self._lbl_ban_saved = QLabel("")
+        self._lbl_ban_saved.setStyleSheet("color: #40a169; font-size: 11px;")
+        row_save.addWidget(self._lbl_ban_saved)
+        btn_save = QPushButton("Guardar")
+        btn_save.setProperty("class", "primary")
+        btn_save.clicked.connect(self._guardar_banco)
+        row_save.addWidget(btn_save)
+        lay.addLayout(row_save)
+
         return grp
 
     # ── Grupo WhatsApp ────────────────────────────────────────────────────
@@ -291,6 +325,17 @@ class SettingsDialog(QDialog):
         hint.setWordWrap(True)
         hint.setStyleSheet("color: #9893a5; font-size: 11px;")
         lay.addWidget(hint)
+
+        row_save = QHBoxLayout()
+        row_save.addStretch()
+        self._lbl_wa_saved = QLabel("")
+        self._lbl_wa_saved.setStyleSheet("color: #40a169; font-size: 11px;")
+        row_save.addWidget(self._lbl_wa_saved)
+        btn_save = QPushButton("Guardar")
+        btn_save.setProperty("class", "primary")
+        btn_save.clicked.connect(self._guardar_whatsapp)
+        row_save.addWidget(btn_save)
+        lay.addLayout(row_save)
 
         return grp
 
@@ -394,18 +439,30 @@ class SettingsDialog(QDialog):
             self._lbl_result.setText(f"✗  {texto}")
             self._lbl_result.setStyleSheet("color: #d7827a; font-size: 12px;")
 
-    def _guardar(self):
+    def _guardar_email(self):
         self._cfg.set_email(
             provider=self._combo_prov.currentData(),
             address=self._edit_email.text().strip(),
             password=self._edit_pass.text(),
         )
+        self._cfg.save()
+        self._lbl_email_saved.setText("✓ Guardado")
+
+    def _guardar_whatsapp(self):
         self._cfg.set_whatsapp(self._edit_tel.text().strip())
+        self._cfg.save()
+        self._lbl_wa_saved.setText("✓ Guardado")
+
+    def _guardar_remitente(self):
         self._cfg.set_remitente(
             nombre=self._rem_edits["nombre"].text().strip(),
             empresa=self._rem_edits["empresa"].text().strip(),
             cargo=self._rem_edits["cargo"].text().strip(),
         )
+        self._cfg.save()
+        self._lbl_rem_saved.setText("✓ Guardado")
+
+    def _guardar_banco(self):
         self._cfg.set_banco(
             nombre=self._ban_edits["nombre"].text().strip(),
             titular=self._ban_edits["titular"].text().strip(),
@@ -414,4 +471,11 @@ class SettingsDialog(QDialog):
             ci=self._ban_edits["ci"].text().strip(),
         )
         self._cfg.save()
+        self._lbl_ban_saved.setText("✓ Guardado")
+
+    def _guardar(self):
+        self._guardar_email()
+        self._guardar_whatsapp()
+        self._guardar_remitente()
+        self._guardar_banco()
         self.accept()
