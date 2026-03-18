@@ -62,12 +62,14 @@ class MessageService:
             return "", f"[Sin plantilla para {tipo}/{canal}]"
 
         desc = cliente_datos.get("descripcion") or "los productos/servicios adquiridos"
+        cfg = ConfigManager.get()
         vars_reemplazo = {
             "cliente":    cliente_datos.get("cliente", ""),
             "factura_no": cliente_datos.get("factura_no", ""),
             "fecha":      cliente_datos.get("fecha", cliente_datos.get("fecha_emision", "")),
             "total":      str(cliente_datos.get("total", cliente_datos.get("monto_pendiente", ""))),
             "descripcion": desc,
+            "empresa":    cfg.get_remitente().get("empresa", ""),
         }
 
         asunto = plantilla["asunto"] or ""
@@ -93,6 +95,8 @@ class MessageService:
         import urllib.parse
 
         tel = telefono.strip().replace(" ", "").replace("-", "")
+        if tel.startswith("+"):
+            tel = tel[1:]   # quitar + antes de procesar
         if tel.startswith("0"):
             tel = "593" + tel[1:]
         elif not tel.startswith("593"):

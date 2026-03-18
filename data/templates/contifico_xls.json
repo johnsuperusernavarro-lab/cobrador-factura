@@ -1,0 +1,6 @@
+{
+  "software":    "Contifico",
+  "description": "Reporte CarteraPorCobrar exportado desde Contifico/Siigo Ecuador",
+  "note":        "Este template usa el parser especializado cobros_service.parse_reporte() — no el parser genérico — porque el XLS de Contifico agrupa filas por cliente con buckets de vencimiento.",
+  "parser":      "cobros_service"
+}

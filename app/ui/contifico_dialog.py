@@ -1,6 +1,10 @@
 """
-contifico_dialog.py — Diálogo para conectar con la API de Contifico
-y sincronizar contactos de clientes a la base de datos local.
+contifico_dialog.py — Diálogo para conectar con la API de Contifico.
+
+Permite:
+  1. Sincronizar Contactos  — trae email/teléfono de todos los clientes
+  2. Sincronizar Facturas   — importa facturas pendientes directamente
+     (alternativa a cargar el XLS manualmente)
 """
 
 from PyQt5.QtCore import Qt, QThread, pyqtSignal
@@ -13,6 +17,7 @@ from PyQt5.QtWidgets import (
 from app.config_manager import ConfigManager
 from app import database as db
 from app.services.contifico_service import ContificoService, ContificoError
+from app.services.scoring_service import recalcular_todos_los_scores
 
 
 # ── Worker de verificación ────────────────────────────────────────────────────
@@ -50,7 +55,7 @@ class _SyncWorker(QThread):
     def run(self):
         svc = ContificoService(self._token)
         try:
-            self.log.emit("Conectando con Contifico…")
+            self.log.emit("Conectando con la API…")
             clientes = svc.get_clientes(
                 progreso_cb=lambda a, t: self.progreso.emit(a, t)
             )
@@ -100,6 +105,58 @@ class _SyncWorker(QThread):
         self.terminado.emit(nuevos, actualizados, sin_email)
 
 
+# ── Worker de sincronización de facturas ─────────────────────────────────────
+
+class _SyncFacturasWorker(QThread):
+    progreso  = pyqtSignal(int, int)
+    log       = pyqtSignal(str)
+    terminado = pyqtSignal(int, int)   # total_facturas, riesgosos
+    error     = pyqtSignal(str)
+
+    def __init__(self, token: str):
+        super().__init__()
+        self._token = token
+
+    def run(self):
+        svc = ContificoService(self._token)
+        try:
+            self.log.emit("Conectando para obtener facturas pendientes…")
+            facturas = svc.get_facturas_pendientes(
+                progreso_cb=lambda a, t: self.progreso.emit(a, t)
+            )
+        except ContificoError as e:
+            self.error.emit(str(e))
+            return
+
+        self.log.emit(f"Se encontraron {len(facturas)} facturas pendientes. Guardando…")
+
+        # Persistir en cache (reemplaza XLS)
+        db.guardar_facturas_cache(facturas)
+
+        # También upsert de contactos con los datos embebidos
+        for f in facturas:
+            nombre = f.get("cliente", "")
+            if nombre:
+                db.upsert_contacto(
+                    nombre_contifico=nombre,
+                    email=f.get("email") or None,
+                    telefono=f.get("telefono") or None,
+                    fuente="contifico_facturas",
+                    confianza=1.0,
+                )
+
+        # Recalcular scores
+        self.log.emit("Actualizando scores de clientes…")
+        recalcular_todos_los_scores()
+
+        vencidas  = sum(1 for f in facturas if f.get("tipo") == "vencida")
+        self.log.emit(
+            f"✓  Listo: {len(facturas)} facturas  "
+            f"({vencidas} vencidas, {len(facturas)-vencidas} por vencer)"
+        )
+        self.terminado.emit(len(facturas), vencidas)
+
+
 # ── Diálogo principal ─────────────────────────────────────────────────────────
 
 class ContificoDialog(QDialog):
@@ -109,13 +166,14 @@ class ContificoDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("🔗  Contifico — Sincronizar Contactos")
+        self.setWindowTitle("🔗  Nexo — Sincronizar Contactos")
         self.setMinimumWidth(520)
         self.setWindowFlags(self.windowFlags() & ~Qt.WindowContextHelpButtonHint)
 
         self._cfg     = ConfigManager.get()
-        self._verify_worker: _VerifyWorker | None = None
-        self._sync_worker:   _SyncWorker   | None = None
+        self._verify_worker:   _VerifyWorker       | None = None
+        self._sync_worker:     _SyncWorker         | None = None
+        self._facturas_worker: _SyncFacturasWorker | None = None
 
         self._setup_ui()
         self._cargar_token()
@@ -129,6 +187,7 @@ class ContificoDialog(QDialog):
 
         root.addWidget(self._build_token_group())
         root.addWidget(self._build_opciones_group())
+        root.addWidget(self._build_facturas_group())
         root.addWidget(self._build_progreso_group())
         root.addLayout(self._build_botones())
 
@@ -139,8 +198,8 @@ class ContificoDialog(QDialog):
 
         # Descripción
         info = QLabel(
-            "Ingresa el token de la API de Contifico para importar los datos\n"
-            "de contacto (email y teléfono) de todos tus clientes."
+            "Ingresa el token de la API de tu sistema contable para importar\n"
+            "los datos de contacto (email y teléfono) de todos tus clientes."
         )
         info.setWordWrap(True)
         info.setStyleSheet("color: #575279; font-size: 12px;")
@@ -156,7 +215,7 @@ class ContificoDialog(QDialog):
         lbl.setFixedWidth(90)
         self._edit_token = QLineEdit()
         self._edit_token.setEchoMode(QLineEdit.Password)
-        self._edit_token.setPlaceholderText("Pega aquí tu token de Contifico")
+        self._edit_token.setPlaceholderText("Pega aquí tu API token")
         row_token.addWidget(lbl)
         row_token.addWidget(self._edit_token, 1)
         lay.addLayout(row_token)
@@ -172,7 +231,7 @@ class ContificoDialog(QDialog):
 
         # Hint donde encontrar el token
         hint = QLabel(
-            "ℹ  Encuéntralo en Contifico → Configuración → Integraciones → API"
+            "ℹ  Encuéntralo en tu sistema contable → Configuración → Integraciones → API"
         )
         hint.setStyleSheet("color: #9893a5; font-size: 11px;")
         lay.addWidget(hint)
@@ -204,7 +263,7 @@ class ContificoDialog(QDialog):
         lay.addWidget(self._chk_solo_email)
 
         nota = QLabel(
-            "Los contactos existentes serán actualizados con los datos de Contifico.\n"
+            "Los contactos existentes serán actualizados con los datos importados.\n"
             "Los contactos ingresados manualmente no se eliminarán."
         )
         nota.setStyleSheet("color: #9893a5; font-size: 11px;")
@@ -212,6 +271,41 @@ class ContificoDialog(QDialog):
         lay.addWidget(nota)
 
         return grp
+
+    def _build_facturas_group(self) -> QGroupBox:
+        grp = QGroupBox("Importar facturas pendientes")
+        lay = QVBoxLayout(grp)
+        lay.setSpacing(8)
+
+        info = QLabel(
+            "Importa todas las facturas con saldo pendiente desde tu sistema contable.\n"
+            "Esto reemplaza la carga manual del archivo XLS y actualiza los scores automáticamente."
+        )
+        info.setWordWrap(True)
+        info.setStyleSheet("color: #575279; font-size: 12px;")
+        lay.addWidget(info)
+
+        self._lbl_cache = QLabel(self._estado_cache())
+        self._lbl_cache.setStyleSheet("color: #9893a5; font-size: 11px;")
+        lay.addWidget(self._lbl_cache)
+
+        row = QHBoxLayout()
+        row.addStretch()
+        self._btn_sync_facturas = QPushButton("📥  Sincronizar Facturas")
+        self._btn_sync_facturas.setProperty("class", "primary")
+        self._btn_sync_facturas.clicked.connect(self._iniciar_sync_facturas)
+        row.addWidget(self._btn_sync_facturas)
+        lay.addLayout(row)
+
+        return grp
+
+    def _estado_cache(self) -> str:
+        facturas = db.get_facturas_cache()
+        if not facturas:
+            return "ℹ  Sin facturas en cache — usa 'Sincronizar Facturas' o carga el XLS en Cartera"
+        vencidas = sum(1 for f in facturas if f.get("tipo") == "vencida")
+        return (f"✓  Cache actual: {len(facturas)} facturas "
+                f"({vencidas} vencidas, {len(facturas)-vencidas} por vencer)")
 
     def _build_progreso_group(self) -> QGroupBox:
         grp = QGroupBox("Progreso")
@@ -291,7 +385,7 @@ class ContificoDialog(QDialog):
         token = self._edit_token.text().strip()
         if not token:
             QMessageBox.warning(self, "Token requerido",
-                                "Ingresa el API token de Contifico antes de sincronizar.")
+                                "Ingresa el API token antes de sincronizar.")
             return
 
         self._guardar_token()
@@ -337,7 +431,7 @@ class ContificoDialog(QDialog):
 
         QMessageBox.information(
             self, "Sincronización completada",
-            f"Se importaron {nuevos + actualizados} contactos desde Contifico.\n\n"
+            f"Se importaron {nuevos + actualizados} contactos desde tu sistema contable.\n\n"
             f"  Nuevos:       {nuevos}\n"
             f"  Actualizados: {actualizados}"
             + (f"\n  Sin email:    {sin_email}" if sin_email else "")
@@ -350,14 +444,68 @@ class ContificoDialog(QDialog):
         self._log.append(f"✗  Error: {msg}")
         QMessageBox.critical(self, "Error de conexión", msg)
 
+    def _iniciar_sync_facturas(self):
+        token = self._edit_token.text().strip()
+        if not token:
+            QMessageBox.warning(self, "Token requerido",
+                                "Ingresa el API token antes de sincronizar.")
+            return
+
+        self._guardar_token()
+        self._log.clear()
+        self._progress.setValue(0)
+        self._btn_sync_facturas.setEnabled(False)
+        self._btn_sync.setEnabled(False)
+        self._btn_cerrar.setEnabled(False)
+        self._btn_sync_facturas.setText("Importando…")
+
+        self._facturas_worker = _SyncFacturasWorker(token)
+        self._facturas_worker.progreso.connect(self._on_progreso)
+        self._facturas_worker.log.connect(self._on_log)
+        self._facturas_worker.terminado.connect(self._on_terminado_facturas)
+        self._facturas_worker.error.connect(self._on_error_facturas)
+        self._facturas_worker.start()
+
+    def _on_terminado_facturas(self, total: int, vencidas: int):
+        self._btn_sync_facturas.setEnabled(True)
+        self._btn_sync.setEnabled(True)
+        self._btn_cerrar.setEnabled(True)
+        self._btn_sync_facturas.setText("📥  Sincronizar Facturas")
+        self._progress.setValue(self._progress.maximum() or 100)
+        self._lbl_cache.setText(self._estado_cache())
+        self.contactos_actualizados.emit()
+
+        QMessageBox.information(
+            self, "Facturas importadas",
+            f"Se importaron {total} facturas pendientes.\n\n"
+            f"  Vencidas:    {vencidas}\n"
+            f"  Por vencer:  {total - vencidas}\n\n"
+            f"Los scores de clientes fueron actualizados.\n"
+            f"Ve a la pestaña Cartera o Dashboard para ver los resultados."
+        )
+
+    def _on_error_facturas(self, msg: str):
+        self._btn_sync_facturas.setEnabled(True)
+        self._btn_sync.setEnabled(True)
+        self._btn_cerrar.setEnabled(True)
+        self._btn_sync_facturas.setText("📥  Sincronizar Facturas")
+        self._log.append(f"✗  Error: {msg}")
+        QMessageBox.critical(self, "Error al importar facturas", msg)
+
     def _on_cerrar(self):
         if self._sync_worker and self._sync_worker.isRunning():
             self._sync_worker.stop()
             self._sync_worker.wait(2000)
+        if self._facturas_worker and self._facturas_worker.isRunning():
+            self._facturas_worker.terminate()
+            self._facturas_worker.wait(2000)
         self.reject()
 
     def closeEvent(self, event):
         if self._sync_worker and self._sync_worker.isRunning():
             self._sync_worker.stop()
             self._sync_worker.wait(2000)
+        if self._facturas_worker and self._facturas_worker.isRunning():
+            self._facturas_worker.terminate()
+            self._facturas_worker.wait(2000)
         super().closeEvent(event)

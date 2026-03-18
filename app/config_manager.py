@@ -11,6 +11,13 @@ from app.utils import get_data_dir
 _CONFIG_PATH = get_data_dir() / "config.json"
 
 _DEFAULTS: dict = {
+    "provider": {
+        "type":      "contifico",   # contifico | alegra | excel
+        "api_token": "",            # contifico
+        "email":     "",            # alegra
+        "token":     "",            # alegra
+        "template":  "",            # excel: nombre del template en data/templates/
+    },
     "email": {
         "provider": "gmail",
         "address":  "",
@@ -126,3 +133,17 @@ class ConfigManager:
             "tipo":    tipo,
             "ci":      ci,
         }
+
+    # ── Proveedor contable ────────────────────────────────────────────────
+
+    def get_provider(self) -> dict:
+        """Retorna la config del proveedor contable activo."""
+        cfg = dict(self._data.get("provider", _DEFAULTS["provider"]))
+        # Compatibilidad: si hay token de Contifico y el tipo es contifico,
+        # usar ese token aunque esté en la sección legacy "contifico".
+        if cfg.get("type") == "contifico" and not cfg.get("api_token"):
+            cfg["api_token"] = self._data.get("contifico", {}).get("api_token", "")
+        return cfg
+
+    def set_provider(self, tipo: str, **kwargs):
+        self._data["provider"] = {"type": tipo, **kwargs}

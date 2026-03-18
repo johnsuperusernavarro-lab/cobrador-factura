@@ -1,14 +1,14 @@
-# Web (servidor y local)
-fastapi>=0.111.0
-uvicorn>=0.29.0
-python-multipart>=0.0.9
+# CONDORNEXUS — dependencias
 
-# Servicios
+# Procesamiento de archivos
 pdfplumber>=0.9.0
 xlrd==1.2.0
 rapidfuzz>=2.0.0
+openpyxl>=3.1.0
+
+# Envío de correo
 yagmail>=0.15.0
 
-# Desktop (solo para main.py en Windows — instalar manualmente si se necesita)
-# PyQt5>=5.15.0
-# pyperclip>=1.8.1
+# GUI (instalar manualmente en Windows si no está)
+PyQt5>=5.15.0
+pyperclip>=1.8.1

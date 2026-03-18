@@ -49,7 +49,7 @@ class ConfirmDialog(QDialog):
         # Separador
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color: #e0d9d0;")
+        sep.setStyleSheet("color: #d6cec5;")
         layout.addWidget(sep)
 
         # Items del resumen
@@ -90,7 +90,7 @@ class ConfirmDialog(QDialog):
         # Separador
         sep2 = QFrame()
         sep2.setFrameShape(QFrame.HLine)
-        sep2.setStyleSheet("color: #e0d9d0;")
+        sep2.setStyleSheet("color: #d6cec5;")
         layout.addWidget(sep2)
 
         # Aviso si no hay nada que enviar

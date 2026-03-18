@@ -17,7 +17,8 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTextEdit, QListWidget, QListWidgetItem,
     QSplitter, QFileDialog, QMessageBox, QProgressDialog,
-    QFrame, QApplication, QGraphicsDropShadowEffect
+    QFrame, QApplication, QGraphicsDropShadowEffect,
+    QLineEdit, QMenu, QAction, QDialog,
 )
 
 try:
@@ -28,7 +29,8 @@ except ImportError:
 
 from app import database as db
 from app.config_manager import ConfigManager
-from app.services.cobros_service import parse_reporte, totales
+from app.services.cobros_service import totales
+from app.services.xls_normalizer import normalizar_cartera
 from app.services.message_service import MessageService
 from app.services.email_service import EmailService
 from app.services.rides_scanner import RidesScanner, UMBRAL_AUTO
@@ -67,7 +69,7 @@ class CardWidget(QFrame):
         self.setFrameShape(QFrame.StyledPanel)
         self.setStyleSheet(
             f"background: #fffaf3; border-radius: 12px; "
-            f"border: 1px solid #e0d9d0;"
+            f"border: 1px solid #d6cec5;"
         )
         self.setMinimumSize(130, 52)
         self.setMaximumHeight(64)
@@ -161,6 +163,7 @@ class CobrosWidget(QWidget):
         super().__init__(parent)
         self._facturas_raw: list[dict] = []
         self._filtro_actual = "todos"
+        self._busqueda = ""
         self._msg_service = MessageService()
         self._scanner: RidesScanner | None = None
 
@@ -180,7 +183,7 @@ class CobrosWidget(QWidget):
         top.addLayout(self._build_cards())
         _sep = QFrame()
         _sep.setFrameShape(QFrame.VLine)
-        _sep.setStyleSheet("color: #e0d9d0;")
+        _sep.setStyleSheet("color: #d6cec5;")
         top.addWidget(_sep)
         top.addLayout(self._build_filtros())
         root.addLayout(top)
@@ -226,9 +229,9 @@ class CobrosWidget(QWidget):
 
         row.addStretch()
 
-        btn_xls = QPushButton("📂  Cargar XLS")
+        btn_xls = QPushButton("📂  Cargar reporte de cartera")
         btn_xls.setProperty("class", "primary")
-        btn_xls.setToolTip("Cargar el reporte CarteraPorCobrar.xls de Contifico")
+        btn_xls.setToolTip("Abre XLS, XLSX o CSV exportado desde tu sistema contable (Contifico, Alegra, Monica, etc.)")
         btn_xls.clicked.connect(self._cargar_xls)
         row.addWidget(btn_xls)
 
@@ -236,7 +239,7 @@ class CobrosWidget(QWidget):
 
     def _build_splitter(self) -> QSplitter:
         splitter = QSplitter(Qt.Horizontal)
-        splitter.setHandleWidth(2)
+        splitter.setHandleWidth(6)   # visible y arrastrable
 
         # Panel izquierdo: lista
         left = QWidget()
@@ -246,15 +249,64 @@ class CobrosWidget(QWidget):
 
         lbl = QLabel("Facturas")
         lbl.setStyleSheet(
-            "color: #9893a5; font-size: 11px; font-weight: 600; "
-            "text-transform: uppercase; letter-spacing: 0.8px;"
+            "color: #797593; font-size: 12px; font-weight: 600;"
         )
         left_layout.addWidget(lbl)
+
+        # ── Búsqueda por nombre (C3) ───────────────────────────────────
+        self._search_box = QLineEdit()
+        self._search_box.setPlaceholderText("🔍  Buscar cliente o factura…")
+        self._search_box.setClearButtonEnabled(True)
+        self._search_box.setStyleSheet(
+            "QLineEdit { border:1px solid #d6cec5; border-radius:6px; "
+            "padding:5px 8px; font-size:12px; background:#fffaf3; }"
+            "QLineEdit:focus { border-color:#286983; }"
+        )
+        self._search_box.textChanged.connect(self._on_busqueda_changed)
+        left_layout.addWidget(self._search_box)
+
+        # ── Leyenda de íconos (C2) ─────────────────────────────────────
+        legend_row = QHBoxLayout()
+        legend_row.setSpacing(10)
+        _ley = [
+            ("●", "#56949f", "Email + Teléfono"),
+            ("◑", "#ea9d34", "Solo uno"),
+            ("○", "#d7827a", "Sin contacto"),
+            ("✎", "#ea9d34", "Pendiente confirmar"),
+        ]
+        for icono, color, tooltip in _ley:
+            dot = QLabel(icono)
+            dot.setStyleSheet(f"color:{color}; font-size:13px;")
+            dot.setToolTip(tooltip)
+            legend_row.addWidget(dot)
+        legend_row.addStretch()
+        left_layout.addLayout(legend_row)
 
         self.lista = QListWidget()
         self.lista.setAlternatingRowColors(False)
         self.lista.itemClicked.connect(self._on_item_click)
+        # Menú contextual (M16)
+        self.lista.setContextMenuPolicy(Qt.CustomContextMenu)
+        self.lista.customContextMenuRequested.connect(self._menu_contextual)
         left_layout.addWidget(self.lista, 1)
+
+        # Overlay de estado vacío sobre el viewport de la lista
+        self._hint_lista = QLabel("", self.lista.viewport())
+        self._hint_lista.setAlignment(Qt.AlignCenter)
+        self._hint_lista.setWordWrap(True)
+        self._hint_lista.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self._hint_lista.setStyleSheet(
+            "color:#9893a5; font-size:12px; background:transparent; padding:24px;"
+        )
+        self.lista.viewport().installEventFilter(self)
+        # visible inicialmente (no hay datos cargados)
+        self._hint_lista.setText(
+            "Sin datos cargados\n\n"
+            "Usa  📂 Cargar reporte de cartera\n"
+            "para subir tu XLS, o\n"
+            "🔗 Conectar Nexo  para sincronizar\n"
+            "desde tu sistema contable."
+        )
 
         splitter.addWidget(left)
 
@@ -351,11 +403,11 @@ class CobrosWidget(QWidget):
 
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color: #e0d9d0;")
+        sep.setStyleSheet("color: #d6cec5;")
 
-        btn_procesar = QPushButton("⚡  Procesar Todo")
+        btn_procesar = QPushButton("📧  Envío masivo")
         btn_procesar.setProperty("class", "primary")
-        btn_procesar.setToolTip("Envía todos los emails pendientes en lote")
+        btn_procesar.setToolTip("Envía emails a todos los clientes pendientes que tienen email registrado")
         btn_procesar.clicked.connect(self._procesar_todo)
 
         btn_plantillas = QPushButton("📝  Plantillas")
@@ -368,20 +420,38 @@ class CobrosWidget(QWidget):
         btn_rides.setToolTip("Escanea la carpeta RIDES/ para actualizar contactos")
         btn_rides.clicked.connect(self._iniciar_escaner)
 
-        btn_contifico = QPushButton("🔗  Contifico")
+        btn_contifico = QPushButton("🔗  Conectar Nexo")
         btn_contifico.setProperty("class", "secondary")
-        btn_contifico.setToolTip("Importar contactos de clientes desde la API de Contifico")
+        btn_contifico.setToolTip("Importar contactos de clientes desde tu sistema contable")
         btn_contifico.clicked.connect(self._abrir_contifico)
+
+        btn_importar_ct = QPushButton("📥  Importar contactos")
+        btn_importar_ct.setProperty("class", "secondary")
+        btn_importar_ct.setToolTip("Importa email y teléfono desde cualquier Excel de agenda o directorio de clientes")
+        btn_importar_ct.clicked.connect(self._importar_contactos_xls)
+
+        btn_exportar = QPushButton("💾  Exportar")
+        btn_exportar.setProperty("class", "secondary")
+        btn_exportar.setToolTip("Exporta la lista filtrada actual a Excel o CSV")
+        btn_exportar.clicked.connect(self._exportar_lista_actual)
+
+        btn_historial = QPushButton("🕐  Historial")
+        btn_historial.setProperty("class", "secondary")
+        btn_historial.setToolTip("Ver y restaurar cargas anteriores")
+        btn_historial.clicked.connect(self._abrir_historial)
 
         row.addWidget(btn_plantillas)
         row.addWidget(btn_rides)
         row.addWidget(btn_contifico)
+        row.addWidget(btn_importar_ct)
+        row.addWidget(btn_exportar)
+        row.addWidget(btn_historial)
         row.addStretch()
 
         _sep_v = QFrame()
         _sep_v.setFrameShape(QFrame.VLine)
         _sep_v.setFixedWidth(1)
-        _sep_v.setStyleSheet("color: #e0d9d0;")
+        _sep_v.setStyleSheet("color: #d6cec5;")
         row.addWidget(_sep_v)
 
         row.addWidget(btn_procesar)
@@ -400,31 +470,70 @@ class CobrosWidget(QWidget):
 
     def _cargar_xls(self):
         ruta, _ = QFileDialog.getOpenFileName(
-            self, "Seleccionar reporte Contifico",
+            self, "Cargar cartera por cobrar",
             str(Path.home()),
-            "Archivos Excel (*.xls *.xlsx)"
+            "Archivos de datos (*.xls *.xlsx *.csv)"
         )
         if not ruta:
             return
 
         try:
-            self._facturas_raw = parse_reporte(ruta)
+            resultado = normalizar_cartera(ruta)
         except Exception as e:
-            QMessageBox.critical(self, "Error al cargar XLS", str(e))
+            QMessageBox.critical(self, "Error al cargar archivo", str(e))
             return
 
-        if not self._facturas_raw:
+        if not resultado.facturas:
             QMessageBox.information(
                 self, "Sin datos",
                 "El archivo no contiene facturas pendientes de cobro."
             )
             return
 
+        # ── Diálogo de validación visual ──────────────────────────────────
+        # El usuario valida el mapeo, la vista previa y las advertencias
+        # ANTES de que se guarde cualquier dato en la base de datos.
+        from app.ui.debug_normalizer_dialog import DebugNormalizerDialog
+        dlg = DebugNormalizerDialog(resultado, Path(ruta).name, parent=self)
+        if dlg.exec_() != QDialog.Accepted:
+            return   # usuario canceló → no se persiste nada
+
+        # A partir de aquí el usuario confirmó la carga
+        self._facturas_raw = resultado.facturas
+
+        # Guardar snapshot en historial
+        monto_total = sum(f.get("monto_pendiente", 0) for f in resultado.facturas)
+        try:
+            from app import database as _db
+            _db.registrar_carga_historial(
+                software=resultado.software,
+                n_facturas=len(resultado.facturas),
+                monto_total=monto_total,
+                nombre_archivo=Path(ruta).name,
+                facturas=resultado.facturas,
+            )
+            _db.limpiar_historial_antiguo(mantener=5)
+        except Exception:
+            pass  # El historial es opcional; no interrumpir el flujo principal
+
+        # Actualizar cache para el scheduler
+        db.guardar_facturas_cache(resultado.facturas)
+
+        # Mensaje de estado
+        n_adv = len(resultado.advertencias)
+        if n_adv:
+            self.status_msg.emit(
+                f"{len(self._facturas_raw)} facturas cargadas  ·  {n_adv} filas omitidas"
+                f"  [{resultado.software}]"
+            )
+        else:
+            self.status_msg.emit(
+                f"{len(self._facturas_raw)} facturas cargadas "
+                f"desde {Path(ruta).name}  [{resultado.software}]"
+            )
+
         self._actualizar_cards()
         self._aplicar_filtro(self._filtro_actual)
-        self.status_msg.emit(
-            f"{len(self._facturas_raw)} facturas cargadas desde {Path(ruta).name}"
-        )
 
     def _actualizar_cards(self):
         tot = totales(self._facturas_raw)
@@ -446,6 +555,10 @@ class CobrosWidget(QWidget):
 
     # ── Filtros ───────────────────────────────────────────────────────────
 
+    def _on_busqueda_changed(self, texto: str):
+        self._busqueda = texto.lower().strip()
+        self._aplicar_filtro(self._filtro_actual)
+
     def _aplicar_filtro(self, filtro: str):
         self._filtro_actual = filtro
 
@@ -453,7 +566,7 @@ class CobrosWidget(QWidget):
         for k, btn in self._btn_filtros.items():
             btn.setChecked(k == filtro)
 
-        # Filtrar facturas
+        # Filtrar por tipo
         if filtro == "todos":
             facturas = self._facturas_raw
         elif filtro in ("vencida", "por_vencer"):
@@ -465,6 +578,14 @@ class CobrosWidget(QWidget):
             ]
         else:
             facturas = self._facturas_raw
+
+        # Filtrar por búsqueda de texto (C3)
+        if self._busqueda:
+            facturas = [
+                f for f in facturas
+                if self._busqueda in f.get("cliente", "").lower()
+                or self._busqueda in f.get("factura_no", "").lower()
+            ]
 
         self._poblar_lista(facturas)
 
@@ -482,6 +603,24 @@ class CobrosWidget(QWidget):
             item = FacturaItem(f, contacto)
             self.lista.addItem(item)
 
+        # Gestionar hint de estado vacío
+        if not self._facturas_raw:
+            self._hint_lista.setText(
+                "Sin datos cargados\n\n"
+                "Usa  📂 Cargar reporte de cartera\n"
+                "para subir tu XLS, o\n"
+                "🔗 Conectar Nexo  para sincronizar\n"
+                "desde tu sistema contable."
+            )
+            self._hint_lista.show()
+            self._reposicionar_hint_lista()
+        elif not facturas:
+            self._hint_lista.setText("Sin resultados para este filtro")
+            self._hint_lista.show()
+            self._reposicionar_hint_lista()
+        else:
+            self._hint_lista.hide()
+
     # ── Selección de item ─────────────────────────────────────────────────
 
     def _on_item_click(self, item: FacturaItem):
@@ -495,13 +634,22 @@ class CobrosWidget(QWidget):
         _, cuerpo = self._msg_service.generar(f, f["tipo"], "whatsapp")
         self.editor.setPlainText(cuerpo)
 
-        # Habilitar botones según disponibilidad de contacto
+        # Habilitar botones según disponibilidad de contacto (M4 — tooltips dinámicos)
         tiene_tel   = bool(contacto and contacto.get("telefono"))
         tiene_email = bool(contacto and contacto.get("email"))
 
         self.btn_copiar.setEnabled(True)
         self.btn_wa.setEnabled(tiene_tel)
         self.btn_email.setEnabled(tiene_email)
+
+        self.btn_wa.setToolTip(
+            "Abre WhatsApp Web con el mensaje prellenado" if tiene_tel
+            else "Sin teléfono — agrégalo desde 🔗 Conectar Nexo o escaneando RIDES"
+        )
+        self.btn_email.setToolTip(
+            "Envía el mensaje por email" if tiene_email
+            else "Sin email — agrégalo desde 🔗 Conectar Nexo o escaneando RIDES"
+        )
 
         # Actualizar header de cliente
         self._client_header.setVisible(True)
@@ -514,6 +662,43 @@ class CobrosWidget(QWidget):
             f"font-weight: 700; font-size: 16px; color: {_color_monto}; "
             "background: transparent; border: none;"
         )
+
+    def _menu_contextual(self, pos):
+        """Menú clic derecho sobre la lista de facturas (M16)."""
+        item = self.lista.itemAt(pos)
+        if not isinstance(item, FacturaItem):
+            return
+
+        menu = QMenu(self)
+        menu.setStyleSheet(
+            "QMenu { background:#fffaf3; border:1px solid #d6cec5; border-radius:8px; padding:4px; }"
+            "QMenu::item { padding:6px 20px; color:#575279; font-size:12px; border-radius:4px; }"
+            "QMenu::item:selected { background:#dde8ed; color:#286983; }"
+        )
+
+        act_copiar = menu.addAction("📋  Copiar mensaje")
+        act_copiar.triggered.connect(self._copiar)
+
+        act_wa = menu.addAction("💬  Abrir WhatsApp")
+        contacto = item.contacto
+        tiene_tel = bool(contacto and contacto.get("telefono"))
+        act_wa.setEnabled(tiene_tel)
+        if not tiene_tel:
+            act_wa.setToolTip("Sin teléfono registrado")
+        act_wa.triggered.connect(self._abrir_whatsapp)
+
+        act_email = menu.addAction("📧  Enviar email")
+        tiene_email = bool(contacto and contacto.get("email"))
+        act_email.setEnabled(tiene_email)
+        act_email.triggered.connect(self._enviar_email_individual)
+
+        menu.addSeparator()
+        act_ok = menu.addAction("✓  Marcar como gestionado")
+        def _marcar():
+            item.marcar_gestionado()
+        act_ok.triggered.connect(_marcar)
+
+        menu.exec_(self.lista.viewport().mapToGlobal(pos))
 
     def _deshabilitar_botones_envio(self):
         self.btn_copiar.setEnabled(False)
@@ -741,6 +926,20 @@ class CobrosWidget(QWidget):
             self._progress_dlg.close()
         QMessageBox.warning(self, "Error en escáner", mensaje)
 
+    # ── Carga desde cache Contifico ───────────────────────────────────────
+
+    def cargar_desde_cache(self):
+        """Carga las facturas desde facturas_cache (sincronizadas desde Contifico)."""
+        facturas = db.get_facturas_cache()
+        if not facturas:
+            return
+        self._facturas_raw = facturas
+        self._actualizar_cards()
+        self._aplicar_filtro(self._filtro_actual)
+        self.status_msg.emit(
+            f"{len(facturas)} facturas cargadas desde Nexo ✓"
+        )
+
     # ── Contifico API ──────────────────────────────────────────────────────
 
     def _abrir_contifico(self):
@@ -749,3 +948,119 @@ class CobrosWidget(QWidget):
             lambda: self._aplicar_filtro(self._filtro_actual)
         )
         dlg.exec_()
+
+    # ── Exportar ───────────────────────────────────────────────────────────
+
+    def _get_facturas_visibles(self) -> list[dict]:
+        """Retorna las facturas actualmente mostradas en la lista (tras filtros)."""
+        facturas = []
+        for i in range(self.lista.count()):
+            item = self.lista.item(i)
+            if isinstance(item, FacturaItem):
+                facturas.append(item.factura)
+        return facturas
+
+    def _exportar_lista_actual(self):
+        facturas = self._get_facturas_visibles()
+        if not facturas:
+            QMessageBox.information(self, "Sin datos", "No hay facturas para exportar.")
+            return
+
+        ruta, filtro = QFileDialog.getSaveFileName(
+            self, "Exportar cartera",
+            str(Path.home() / "cartera_export"),
+            "Excel (*.xlsx);;CSV (*.csv)"
+        )
+        if not ruta:
+            return
+
+        from app.services.export_service import exportar_xlsx, exportar_csv
+        if ruta.lower().endswith(".xlsx"):
+            ok, err = exportar_xlsx(facturas, ruta)
+        else:
+            if not ruta.lower().endswith(".csv"):
+                ruta += ".csv"
+            ok, err = exportar_csv(facturas, ruta)
+
+        if ok:
+            self.status_msg.emit(
+                f"Exportado: {Path(ruta).name}  ({len(facturas)} registros) ✓"
+            )
+        else:
+            QMessageBox.critical(self, "Error al exportar", err)
+
+    # ── Historial de cargas ────────────────────────────────────────────────
+
+    def _abrir_historial(self):
+        from app.ui.historial_dialog import HistorialDialog
+        dlg = HistorialDialog(self)
+        if dlg.exec_() == HistorialDialog.Accepted and dlg.facturas_restauradas:
+            facturas = dlg.facturas_restauradas
+            self._facturas_raw = facturas
+            db.guardar_facturas_cache(facturas)
+            self._actualizar_cards()
+            self._aplicar_filtro(self._filtro_actual)
+            self.status_msg.emit(
+                f"Cartera restaurada desde historial — {len(facturas)} facturas ✓"
+            )
+
+    # ── Importar contactos desde XLS ──────────────────────────────────────
+
+    def _importar_contactos_xls(self):
+        ruta, _ = QFileDialog.getOpenFileName(
+            self, "Importar contactos desde agenda / directorio de clientes",
+            str(Path.home()),
+            "Archivos de datos (*.xls *.xlsx *.csv)"
+        )
+        if not ruta:
+            return
+
+        from app.services.contactos_normalizer import normalizar_contactos, importar_contactos_a_db
+        try:
+            resultado = normalizar_contactos(ruta)
+        except Exception as e:
+            QMessageBox.critical(self, "Error al leer archivo", str(e))
+            return
+
+        if not resultado.contactos:
+            QMessageBox.information(
+                self, "Sin contactos",
+                "No se encontraron contactos válidos (con email o teléfono) en el archivo."
+            )
+            return
+
+        resp = QMessageBox.question(
+            self, "Importar contactos",
+            f"Se encontraron {len(resultado.contactos)} contactos en '{Path(ruta).name}'.\n"
+            f"Software detectado: {resultado.software_detectado}\n\n"
+            "¿Importar todos a la base de contactos?"
+        )
+        if resp != QMessageBox.Yes:
+            return
+
+        n_nuevos, n_actualizados = importar_contactos_a_db(resultado.contactos)
+        self.status_msg.emit(
+            f"Contactos importados: {n_nuevos} nuevos, {n_actualizados} actualizados ✓"
+        )
+        self._aplicar_filtro(self._filtro_actual)
+
+    # ── Empty-state hint helpers ──────────────────────────────────────────
+
+    def eventFilter(self, obj, event):
+        from PyQt5.QtCore import QEvent
+        if hasattr(self, "_hint_lista") and obj is self.lista.viewport():
+            if event.type() == QEvent.Resize:
+                self._reposicionar_hint_lista()
+        return super().eventFilter(obj, event)
+
+    def _reposicionar_hint_lista(self):
+        if hasattr(self, "_hint_lista"):
+            vp = self.lista.viewport()
+            self._hint_lista.setGeometry(0, 0, vp.width(), vp.height())
+
+    # ── Búsqueda global (contrato para main_window) ───────────────────────
+
+    def buscar(self, texto: str) -> bool:
+        """Aplica el texto de búsqueda y retorna True si hay resultados."""
+        self._search_box.setText(texto)
+        return self.lista.count() > 0

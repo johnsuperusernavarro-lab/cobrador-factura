@@ -105,14 +105,14 @@ def extraer_datos(ruta_pdf: Path) -> dict:
         encontrados  = re.findall(r"[\w.\-+]+@[\w.\-]+\.\w{2,6}", sin_espacios)
         mi_email = _get_mi_email()
         datos["emails"] = [e for e in encontrados
-                           if "interbalanzas" not in e.lower() and e != mi_email]
+                           if e != mi_email]
 
     # Fallback: cualquier email que no sea el nuestro
     if not datos["emails"]:
         mi_email = _get_mi_email()
         todos = re.findall(r"[\w.\-+]+@[\w.\-]+\.\w{2,6}", texto)
         datos["emails"] = [e for e in todos
-                           if "interbalanzas" not in e.lower() and e != mi_email]
+                           if e != mi_email]
 
     # Total
     m = re.search(r"Valor\s+Total:\s*\$?([\d.,]+)", texto)

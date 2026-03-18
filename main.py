@@ -1,59 +1,24 @@
 #!/usr/bin/env python3
 """
-main.py — Entry point del Cobrador de Facturas (PyQt5)
+main.py — Punto de entrada del Cobrador de Facturas (Desktop v3.0)
 
-Uso:
-    python main.py
+Ejecutar:
+    python main.py            ← doble clic en Windows / lanzador directo
+    python -m main            ← equivalente via módulo
+
+Arquitectura:
+    main.py  →  ui/launcher.py  →  ui/main_window.py
+                                     ├── ui/dashboard_widget.py   (core/)
+                                     ├── ui/acciones_widget.py    (core/)
+                                     ├── ui/mensajes_widget.py    (core/)
+                                     ├── app/ui/cobros_widget.py  (app/services/)
+                                     └── app/ui/pdf_drop_widget.py
+
+No requiere servidor HTTP. Toda la lógica está en core/ y app/services/.
 """
 
-import sys
-import os
-from pathlib import Path
-
-# UTF-8 en terminal Windows
-if sys.platform == "win32":
-    try:
-        import io
-        sys.stdout = io.TextIOWrapper(sys.stdout.buffer, encoding="utf-8", errors="replace")
-        sys.stderr = io.TextIOWrapper(sys.stderr.buffer, encoding="utf-8", errors="replace")
-    except AttributeError:
-        pass
-
-# Asegurar que el directorio de trabajo sea el del script
-os.chdir(Path(__file__).parent)
-
-from PyQt5.QtWidgets import QApplication
-from PyQt5.QtCore import Qt, QCoreApplication
-from PyQt5.QtGui import QIcon
-
-from app.database import init_db
-from app.ui.main_window import MainWindow
-from app.utils import get_bundle_dir
-
-ICON_PATH = get_bundle_dir() / "resources" / "icon.ico"
-
-
-def main():
-    # DPI alto en Windows
-    QCoreApplication.setAttribute(Qt.AA_EnableHighDpiScaling, True)
-    QCoreApplication.setAttribute(Qt.AA_UseHighDpiPixmaps, True)
-
-    app = QApplication(sys.argv)
-    app.setApplicationName("Cobrador de Facturas")
-    app.setOrganizationName("")
-
-    if ICON_PATH.exists():
-        app.setWindowIcon(QIcon(str(ICON_PATH)))
-
-    # Inicializar base de datos
-    init_db()
-
-    # Ventana principal
-    window = MainWindow()
-    window.show()
-
-    sys.exit(app.exec_())
-
+# Delega completamente a main/__main__.py para evitar duplicación
+from main.__main__ import run
 
 if __name__ == "__main__":
-    main()
+    run()

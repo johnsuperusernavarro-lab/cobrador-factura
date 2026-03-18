@@ -25,6 +25,15 @@ def _limpiar(texto: str) -> str:
     return "\n".join(lineas)
 
 
+def _get_mi_email() -> str:
+    """Lee el email del remitente desde config para excluirlo del parsing."""
+    try:
+        from app.config_manager import ConfigManager
+        return ConfigManager.get().get_email().get("address", "").lower()
+    except Exception:
+        return ""
+
+
 def _extraer_email_tel(ruta_pdf: Path) -> tuple[str, str]:
     """Extrae email y teléfono del cliente del RIDE."""
     try:
@@ -70,8 +79,9 @@ def _extraer_email_tel(ruta_pdf: Path) -> tuple[str, str]:
                 email_texto += s
         email_sin_espacios = "".join(email_texto.split())
         encontrados = re.findall(r"[\w.\-+]+@[\w.\-]+\.\w{2,6}", email_sin_espacios)
+        mi_email = _get_mi_email()
         validos = [e for e in encontrados
-                   if "interbalanzas" not in e.lower()]
+                   if e != mi_email]
         if validos:
             email = validos[0]
 

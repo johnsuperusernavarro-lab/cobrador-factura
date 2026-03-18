@@ -93,7 +93,7 @@ class PlantillasDialog(QDialog):
         # Botones
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color: #e0d9d0;")
+        sep.setStyleSheet("color: #d6cec5;")
         root.addWidget(sep)
 
         botones = QHBoxLayout()

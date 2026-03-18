@@ -19,7 +19,7 @@ from PyQt5.QtWidgets import (
     QWidget, QVBoxLayout, QHBoxLayout, QLabel,
     QPushButton, QTextEdit, QListWidget, QListWidgetItem,
     QSplitter, QFrame, QComboBox, QFileDialog, QLineEdit,
-    QApplication, QProgressBar, QSizePolicy
+    QApplication, QProgressBar, QSizePolicy, QStackedWidget
 )
 
 try:
@@ -250,33 +250,81 @@ class PdfDropWidget(QWidget):
 
         self._lista = QListWidget()
         self._lista.itemClicked.connect(self._on_item_click)
+        self._lista.itemDoubleClicked.connect(self._on_item_doble_clic)   # M17
         ll.addWidget(self._lista, 1)
+
+        # Overlay de estado vacío sobre el viewport de la lista
+        self._hint_lista_pdf = QLabel(
+            "Arrastra una factura PDF\na la zona de arriba\npara comenzar",
+            self._lista.viewport()
+        )
+        self._hint_lista_pdf.setAlignment(Qt.AlignCenter)
+        self._hint_lista_pdf.setWordWrap(True)
+        self._hint_lista_pdf.setAttribute(Qt.WA_TransparentForMouseEvents)
+        self._hint_lista_pdf.setStyleSheet(
+            "color:#9893a5; font-size:12px; background:transparent; padding:16px;"
+        )
+        self._lista.viewport().installEventFilter(self)
+        # visible inicialmente (lista vacía)
 
         splitter.addWidget(left)
 
-        # Panel derecho — controles + editor
+        # Panel derecho — QStackedWidget: pista vacía / controles activos
         right = QWidget()
-        rl = QVBoxLayout(right)
-        rl.setContentsMargins(0, 0, 0, 0)
+        rl_outer = QVBoxLayout(right)
+        rl_outer.setContentsMargins(0, 0, 0, 0)
+        rl_outer.setSpacing(0)
+
+        self._right_stack = QStackedWidget()
+        rl_outer.addWidget(self._right_stack)
+
+        # ── Página 0: sin PDF seleccionado ──────────────────────────────
+        _pag_vacia = QWidget()
+        _pv_layout = QVBoxLayout(_pag_vacia)
+        _pv_layout.setAlignment(Qt.AlignCenter)
+        _pv_layout.setSpacing(10)
+        _lbl_pista_ico = QLabel("📄")
+        _lbl_pista_ico.setAlignment(Qt.AlignCenter)
+        _lbl_pista_ico.setStyleSheet("font-size:28px; background:transparent;")
+        _lbl_pista = QLabel(
+            "Selecciona una factura de la lista\n"
+            "para ver y editar el mensaje\n"
+            "antes de enviarlo"
+        )
+        _lbl_pista.setAlignment(Qt.AlignCenter)
+        _lbl_pista.setWordWrap(True)
+        _lbl_pista.setStyleSheet("color:#9893a5; font-size:12px; background:transparent;")
+        _pv_layout.addWidget(_lbl_pista_ico)
+        _pv_layout.addWidget(_lbl_pista)
+        self._right_stack.addWidget(_pag_vacia)
+
+        # ── Página 1: controles ──────────────────────────────────────────
+        controls = QWidget()
+        rl = QVBoxLayout(controls)
+        rl.setContentsMargins(0, 4, 0, 0)
         rl.setSpacing(8)
 
         # Fila de tipo + canal
         ctrl_row = QHBoxLayout()
         ctrl_row.setSpacing(8)
 
-        lbl_tipo = QLabel("Tipo:")
+        lbl_tipo = QLabel("Estado:")
         lbl_tipo.setStyleSheet("color: #9893a5; font-size: 11px;")
         ctrl_row.addWidget(lbl_tipo)
 
         self._combo_tipo = QComboBox()
-        self._combo_tipo.addItem("Por vencer",  "por_vencer")
-        self._combo_tipo.addItem("Vencida",     "vencida")
+        self._combo_tipo.addItem("🔵  Por vencer",  "por_vencer")
+        self._combo_tipo.addItem("🔴  Vencida",     "vencida")
+        self._combo_tipo.setToolTip(
+            "Detectado automáticamente desde la fecha del PDF\n"
+            "— modifícalo si es necesario"
+        )
         self._combo_tipo.currentIndexChanged.connect(self._regenerar_mensaje)
         ctrl_row.addWidget(self._combo_tipo)
 
         ctrl_row.addSpacing(12)
 
-        lbl_canal = QLabel("Canal:")
+        lbl_canal = QLabel("Enviar por:")
         lbl_canal.setStyleSheet("color: #9893a5; font-size: 11px;")
         ctrl_row.addWidget(lbl_canal)
 
@@ -289,7 +337,13 @@ class PdfDropWidget(QWidget):
         ctrl_row.addStretch()
         rl.addLayout(ctrl_row)
 
-        # Fila de contacto editable
+        # Fila de destinatario (editable)
+        lbl_dest = QLabel("Destinatario")
+        lbl_dest.setStyleSheet(
+            "color: #797593; font-size: 11px; font-weight: 600;"
+        )
+        rl.addWidget(lbl_dest)
+
         contact_row = QHBoxLayout()
         contact_row.setSpacing(6)
 
@@ -297,14 +351,16 @@ class PdfDropWidget(QWidget):
         lbl_ce.setStyleSheet("color: #9893a5; font-size: 11px;")
         lbl_ce.setFixedWidth(40)
         self._edit_dest_email = QLineEdit()
-        self._edit_dest_email.setPlaceholderText("email@cliente.com  (editable)")
+        self._edit_dest_email.setPlaceholderText("email@cliente.com")
+        self._edit_dest_email.setToolTip("Email extraído del PDF — puedes editarlo antes de enviar")
         self._edit_dest_email.textChanged.connect(self._on_contacto_changed)
 
         lbl_ct = QLabel("Tel:")
         lbl_ct.setStyleSheet("color: #9893a5; font-size: 11px;")
         lbl_ct.setFixedWidth(28)
         self._edit_dest_tel = QLineEdit()
-        self._edit_dest_tel.setPlaceholderText("09XXXXXXXX  (editable)")
+        self._edit_dest_tel.setPlaceholderText("09XXXXXXXX")
+        self._edit_dest_tel.setToolTip("Teléfono extraído del PDF — puedes editarlo antes de enviar")
         self._edit_dest_tel.textChanged.connect(self._on_contacto_changed)
 
         contact_row.addWidget(lbl_ce)
@@ -314,11 +370,15 @@ class PdfDropWidget(QWidget):
         contact_row.addWidget(self._edit_dest_tel, 2)
         rl.addLayout(contact_row)
 
-        # Editor
-        self._editor = QTextEdit()
-        self._editor.setPlaceholderText(
-            "Arrastra un PDF a la zona superior y selecciónalo aquí…"
+        # Editor de mensaje
+        lbl_msg = QLabel("Mensaje")
+        lbl_msg.setStyleSheet(
+            "color: #797593; font-size: 11px; font-weight: 600;"
         )
+        rl.addWidget(lbl_msg)
+
+        self._editor = QTextEdit()
+        self._editor.setPlaceholderText("El mensaje generado aparecerá aquí — puedes editarlo antes de enviar…")
         self._editor.setAcceptRichText(False)
         rl.addWidget(self._editor, 1)
 
@@ -350,6 +410,9 @@ class PdfDropWidget(QWidget):
         btn_row.addWidget(self._btn_email)
         rl.addLayout(btn_row)
 
+        self._right_stack.addWidget(controls)
+        self._right_stack.setCurrentIndex(0)
+
         splitter.addWidget(right)
         splitter.setSizes([300, 500])
         root.addWidget(splitter, 1)
@@ -357,7 +420,7 @@ class PdfDropWidget(QWidget):
         # Barra inferior
         sep = QFrame()
         sep.setFrameShape(QFrame.HLine)
-        sep.setStyleSheet("color: #e0d9d0;")
+        sep.setStyleSheet("color: #d6cec5;")
         root.addWidget(sep)
 
         bottom_row = QHBoxLayout()
@@ -405,8 +468,15 @@ class PdfDropWidget(QWidget):
         self._worker.start()
 
     def _on_pdf_extraido(self, datos: dict):
+        # M12 — autodetectar tipo vencida/por_vencer según fecha del PDF
+        self._autodetectar_tipo(datos)
+
         item = PdfItem(datos)
         self._lista.addItem(item)
+
+        # Ocultar hint de lista vacía
+        if hasattr(self, "_hint_lista_pdf"):
+            self._hint_lista_pdf.hide()
 
         self._n_procesados += 1
         self._progress.setValue(self._n_procesados)
@@ -417,6 +487,30 @@ class PdfDropWidget(QWidget):
             self._on_item_click(self._lista.item(0))
 
         self._actualizar_contador()
+
+    def _autodetectar_tipo(self, datos: dict):
+        """Preselecciona 'vencida' o 'por_vencer' en el combo según la fecha del PDF."""
+        from datetime import date as _date
+        fecha_str = datos.get("fecha", "") or datos.get("fecha_vencimiento", "")
+        if not fecha_str:
+            return
+        try:
+            # Intenta DD/MM/YYYY y YYYY-MM-DD
+            for fmt in ("%d/%m/%Y", "%Y-%m-%d", "%d-%m-%Y"):
+                try:
+                    from datetime import datetime
+                    fecha = datetime.strptime(fecha_str[:10], fmt).date()
+                    break
+                except ValueError:
+                    continue
+            else:
+                return
+            tipo = "vencida" if fecha < _date.today() else "por_vencer"
+            idx = self._combo_tipo.findData(tipo)
+            if idx >= 0:
+                self._combo_tipo.setCurrentIndex(idx)
+        except Exception:
+            pass
 
     def _on_pdf_error(self, ruta: str, msg: str):
         self._n_procesados += 1
@@ -433,7 +527,41 @@ class PdfDropWidget(QWidget):
     def _on_item_click(self, item):
         if not isinstance(item, PdfItem):
             return
+        self._right_stack.setCurrentIndex(1)
         self._regenerar_mensaje()
+
+    def _on_item_doble_clic(self, item):
+        """M17 — doble clic muestra los datos extraídos del PDF para revisión/corrección."""
+        if not isinstance(item, PdfItem):
+            return
+        from PyQt5.QtWidgets import QDialog, QFormLayout, QDialogButtonBox
+        d = item.datos
+        dlg = QDialog(self)
+        dlg.setWindowTitle(f"Datos extraídos — {d.get('archivo', '')}")
+        dlg.setMinimumWidth(420)
+        form = QFormLayout(dlg)
+        form.setSpacing(8)
+        form.setContentsMargins(16, 16, 16, 16)
+        campos = [
+            ("Razón social",  d.get("razon_social", "—")),
+            ("Factura N°",    d.get("factura_no", "—")),
+            ("Fecha",         d.get("fecha", "—")),
+            ("Total",         f"${d.get('total', '—')}"),
+            ("Email(s)",      ", ".join(d.get("emails", [])) or "—"),
+            ("Teléfono",      d.get("telefono", "—")),
+            ("Descripción",   (d.get("descripcion", "") or "—")[:80]),
+        ]
+        for lbl, val in campos:
+            lbl_w = QLabel(lbl)
+            lbl_w.setStyleSheet("color:#797593; font-size:12px; font-weight:600;")
+            val_w = QLabel(val)
+            val_w.setStyleSheet("color:#575279; font-size:12px;")
+            val_w.setWordWrap(True)
+            form.addRow(lbl_w, val_w)
+        btns = QDialogButtonBox(QDialogButtonBox.Ok)
+        btns.accepted.connect(dlg.accept)
+        form.addRow(btns)
+        dlg.exec_()
 
     def _regenerar_mensaje(self):
         item = self._lista.currentItem()
@@ -554,6 +682,20 @@ class PdfDropWidget(QWidget):
 
     # ── Utilidades ────────────────────────────────────────────────────────
 
+    # ── Empty-state hint helpers ──────────────────────────────────────────
+
+    def eventFilter(self, obj, event):
+        from PyQt5.QtCore import QEvent
+        if hasattr(self, "_hint_lista_pdf") and obj is self._lista.viewport():
+            if event.type() == QEvent.Resize:
+                self._reposicionar_hint_pdf_lista()
+        return super().eventFilter(obj, event)
+
+    def _reposicionar_hint_pdf_lista(self):
+        if hasattr(self, "_hint_lista_pdf"):
+            vp = self._lista.viewport()
+            self._hint_lista_pdf.setGeometry(0, 0, vp.width(), vp.height())
+
     def _limpiar(self):
         self._lista.clear()
         self._editor.clear()
@@ -563,6 +705,10 @@ class PdfDropWidget(QWidget):
         self._btn_wa.setEnabled(False)
         self._btn_email.setEnabled(False)
         self._lbl_count.setText("Sin facturas cargadas")
+        self._right_stack.setCurrentIndex(0)
+        if hasattr(self, "_hint_lista_pdf"):
+            self._hint_lista_pdf.show()
+            self._reposicionar_hint_pdf_lista()
         self.status_msg.emit("Lista limpiada")
 
     def _actualizar_contador(self):

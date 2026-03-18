@@ -1,0 +1,19 @@
+{
+  "software":    "Monica",
+  "description": "Exportación de cuentas por cobrar desde Monica 11",
+  "sheet":       0,
+  "header_row":  0,
+  "columns": {
+    "cliente":           "Nombre",
+    "factura_no":        "Comprobante",
+    "fecha_emision":     "Fecha",
+    "fecha_vencimiento": "Fecha Vence",
+    "monto":             "Total",
+    "monto_pendiente":   "Saldo",
+    "descripcion":       "Descripción",
+    "telefono":          "Teléfono"
+  },
+  "date_format": "DD/MM/YYYY",
+  "skip_if_zero": true,
+  "_note": "Monica no tiene API. Exporta desde: Cuentas por Cobrar → Reporte → Exportar Excel. Ajusta los nombres de columna si difieren en tu versión."
+}

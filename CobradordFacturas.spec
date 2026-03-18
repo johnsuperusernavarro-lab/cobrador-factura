@@ -1,7 +1,11 @@
 # -*- mode: python ; coding: utf-8 -*-
 from PyInstaller.utils.hooks import collect_all
 
-datas = [('styles/styles.qss', 'styles/'), ('resources/icon.ico', 'resources/')]
+datas = [
+    ('styles/styles.qss',   'styles/'),
+    ('resources/icon.ico',  'resources/'),
+    ('data/templates',      'data/templates'),
+]
 binaries = []
 hiddenimports = ['PyQt5.sip', 'xlrd', 'pdfplumber', 'pdfplumber.utils', 'rapidfuzz', 'rapidfuzz.fuzz', 'rapidfuzz.process', 'pyperclip', 'pdfminer', 'pdfminer.high_level', 'pdfminer.layout']
 tmp_ret = collect_all('pdfplumber')
@@ -30,7 +34,7 @@ exe = EXE(
     a.scripts,
     [],
     exclude_binaries=True,
-    name='CobradordFacturas',
+    name='CONDORNEXUS',
     debug=False,
     bootloader_ignore_signals=False,
     strip=False,
@@ -50,5 +54,5 @@ coll = COLLECT(
     strip=False,
     upx=True,
     upx_exclude=[],
-    name='CobradordFacturas',
+    name='CONDORNEXUS',
 )

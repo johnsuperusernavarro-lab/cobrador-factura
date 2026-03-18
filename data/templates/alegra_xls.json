@@ -1,0 +1,21 @@
+{
+  "software":    "Alegra",
+  "description": "Exportación de cuentas por cobrar desde Alegra (Excel)",
+  "sheet":       0,
+  "header_row":  0,
+  "columns": {
+    "cliente":           "Cliente",
+    "factura_no":        "Número",
+    "fecha_emision":     "Fecha",
+    "fecha_vencimiento": "Vencimiento",
+    "monto":             "Total",
+    "monto_pendiente":   "Saldo",
+    "descripcion":       "Descripción",
+    "email":             "Email",
+    "telefono":          "Teléfono",
+    "cedula_ruc":        "Identificación"
+  },
+  "date_format": "DD/MM/YYYY",
+  "skip_if_zero": true,
+  "_note": "Ajusta los nombres de columna según la exportación real de tu cuenta Alegra"
+}

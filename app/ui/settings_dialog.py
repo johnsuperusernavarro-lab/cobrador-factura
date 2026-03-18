@@ -82,7 +82,7 @@ class SettingsDialog(QDialog):
 
     def __init__(self, parent=None):
         super().__init__(parent)
-        self.setWindowTitle("⚙  Ajustes")
+        self.setWindowTitle("⚙  Ajustes — CONDORNEXUS")
         self.setMinimumWidth(480)
         self.setMinimumHeight(280)
         self.resize(490, 420)
@@ -128,7 +128,7 @@ class SettingsDialog(QDialog):
         # Botones fuera del scroll, siempre visibles
         btn_frame = QWidget()
         btn_frame.setStyleSheet(
-            "QWidget { border-top: 1px solid #e0d9d0; "
+            "QWidget { border-top: 1px solid #d6cec5; "
             "background-color: #faf4ed; }"
         )
         btn_layout = QHBoxLayout(btn_frame)
@@ -218,7 +218,11 @@ class SettingsDialog(QDialog):
         self._lbl_email_saved.setStyleSheet("color: #40a169; font-size: 11px;")
         row_save.addWidget(self._lbl_email_saved)
         btn_save = QPushButton("Guardar")
-        btn_save.setProperty("class", "primary")
+        btn_save.setStyleSheet(
+            "QPushButton { background:#286983; color:#ffffff; font-weight:600; "
+            "font-size:12px; border-radius:6px; padding:5px 16px; border:none; }"
+            "QPushButton:hover { background:#1d4f63; }"
+        )
         btn_save.clicked.connect(self._guardar_email)
         row_save.addWidget(btn_save)
         lay.addLayout(row_save)
@@ -255,7 +259,11 @@ class SettingsDialog(QDialog):
         self._lbl_rem_saved.setStyleSheet("color: #40a169; font-size: 11px;")
         row_save.addWidget(self._lbl_rem_saved)
         btn_save = QPushButton("Guardar")
-        btn_save.setProperty("class", "primary")
+        btn_save.setStyleSheet(
+            "QPushButton { background:#286983; color:#ffffff; font-weight:600; "
+            "font-size:12px; border-radius:6px; padding:5px 16px; border:none; }"
+            "QPushButton:hover { background:#1d4f63; }"
+        )
         btn_save.clicked.connect(self._guardar_remitente)
         row_save.addWidget(btn_save)
         lay.addLayout(row_save)
@@ -294,7 +302,11 @@ class SettingsDialog(QDialog):
         self._lbl_ban_saved.setStyleSheet("color: #40a169; font-size: 11px;")
         row_save.addWidget(self._lbl_ban_saved)
         btn_save = QPushButton("Guardar")
-        btn_save.setProperty("class", "primary")
+        btn_save.setStyleSheet(
+            "QPushButton { background:#286983; color:#ffffff; font-weight:600; "
+            "font-size:12px; border-radius:6px; padding:5px 16px; border:none; }"
+            "QPushButton:hover { background:#1d4f63; }"
+        )
         btn_save.clicked.connect(self._guardar_banco)
         row_save.addWidget(btn_save)
         lay.addLayout(row_save)
@@ -332,7 +344,11 @@ class SettingsDialog(QDialog):
         self._lbl_wa_saved.setStyleSheet("color: #40a169; font-size: 11px;")
         row_save.addWidget(self._lbl_wa_saved)
         btn_save = QPushButton("Guardar")
-        btn_save.setProperty("class", "primary")
+        btn_save.setStyleSheet(
+            "QPushButton { background:#286983; color:#ffffff; font-weight:600; "
+            "font-size:12px; border-radius:6px; padding:5px 16px; border:none; }"
+            "QPushButton:hover { background:#1d4f63; }"
+        )
         btn_save.clicked.connect(self._guardar_whatsapp)
         row_save.addWidget(btn_save)
         lay.addLayout(row_save)
@@ -351,7 +367,11 @@ class SettingsDialog(QDialog):
         row.addWidget(btn_cancel)
 
         btn_guardar = QPushButton("   Guardar   ")
-        btn_guardar.setProperty("class", "primary")
+        btn_guardar.setStyleSheet(
+            "QPushButton { background:#286983; color:#ffffff; font-weight:600; "
+            "font-size:12px; border-radius:6px; padding:5px 16px; border:none; }"
+            "QPushButton:hover { background:#1d4f63; }"
+        )
         btn_guardar.clicked.connect(self._guardar)
         row.addWidget(btn_guardar)
 

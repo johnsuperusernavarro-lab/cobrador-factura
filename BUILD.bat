@@ -2,8 +2,8 @@
 cd /d "%~dp0"
 
 echo.
-echo  Compilando Cobrador de Facturas...
-echo  Esto puede tardar 1-3 minutos.
+echo  Compilando CONDORNEXUS...
+echo  Esto puede tardar 2-4 minutos.
 echo.
 
 "C:\Users\USERS\AppData\Local\Programs\Python\Python314\python.exe" -m PyInstaller CobradordFacturas.spec --clean
@@ -17,6 +17,10 @@ if %errorlevel% neq 0 (
 
 echo.
 echo  Compilacion exitosa.
-echo  Ejecutable en: dist\CobradordFacturas\CobradordFacturas.exe
+echo  Carpeta lista en: dist\CONDORNEXUS\
+echo  Ejecutable:       dist\CONDORNEXUS\CONDORNEXUS.exe
+echo.
+echo  Siguiente paso: ejecuta PREPARAR_PARA_TESTER.bat y luego comprime
+echo  la carpeta dist\CONDORNEXUS\ en un ZIP para distribuir.
 echo.
 pause
